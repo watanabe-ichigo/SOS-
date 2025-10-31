@@ -7,27 +7,10 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Hello World!"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
-    <com.google.android.material.chip.Chip
-        android:id="@+id/chip"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        tools:layout_editor_absoluteX="168dp"
-        tools:layout_editor_absoluteY="129dp" />
-
     <com.google.android.gms.maps.MapView
         android:id="@+id/mapView"
-        android:layout_width="800dp"
-        android:layout_height="609dp"
-        tools:layout_editor_absoluteX="-6dp"
-        tools:layout_editor_absoluteY="107dp" />
-
+        android:layout_width="139dp"
+        android:layout_height="324dp"
+        tools:layout_editor_absoluteX="186dp"
+        tools:layout_editor_absoluteY="401dp" />
 </androidx.constraintlayout.widget.ConstraintLayout>
