@@ -1,6 +1,9 @@
 package com.example.sosbaton;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -72,6 +75,18 @@ public class MainActivity extends AppCompatActivity {
 
         // --- MapView 初期化（必要なら） ---
         mapView.onCreate(savedInstanceState);
+
+        //---SOSボタン---
+        Button sosButton = findViewById(R.id.sosButton);
+        sosButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // SosActivityに画面遷移
+                Intent intent = new Intent(MainActivity.this, SosActivity.class);
+                startActivity(intent);
+            }
+
+        });
     }
 
     @Override

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#E53935" /> <!-- 赤 -->
+    <size android:width="200dp" android:height="200dp" /> <!-- 丸のサイズ -->
+    <stroke android:width="2dp" android:color="#B71C1C"/> <!-- 枠線（オプション） -->
+
+</shape>

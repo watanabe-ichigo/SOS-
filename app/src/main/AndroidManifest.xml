@@ -29,6 +29,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".SosActivity"
+            android:exported="false"
+            android:label="SOS画面" />
     </application>
 
 </manifest>

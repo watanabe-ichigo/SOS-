@@ -10,6 +10,8 @@
 
     tools:context=".MainActivity">
 
+
+
     <!-- メインコンテンツ -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/main_content"
@@ -33,16 +35,33 @@
             app:title="マップ画面"
             app:titleTextColor="@android:color/white" />
 
+
         <com.google.android.gms.maps.MapView
             android:id="@+id/mapView"
             android:layout_width="0dp"
             android:layout_height="0dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="1.0"
+            app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/toolbar"
             app:layout_constraintVertical_bias="0.0" />
+
+        <Button
+            android:id="@+id/sosButton"
+            android:layout_width="75dp"
+            android:layout_height="75dp"
+            android:background="@drawable/round_button"
+            android:backgroundTint="@null"
+            android:text="SOS"
+            android:textColor="@android:color/white"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.952"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintVertical_bias="0.948" />
+
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
@@ -55,3 +74,5 @@
         app:menu="@menu/drawer_menu"
         app:headerLayout="@layout/drawer_header"/>
 </androidx.drawerlayout.widget.DrawerLayout>
+
+
