@@ -14,6 +14,18 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import com.google.android.gms.maps.MapView;
 import com.google.android.material.navigation.NavigationView;
+//データベース接続
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.firestore.FirebaseFirestore;
+// Firestore関連
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.firestore.DocumentSnapshot;
+
+// Androidのログ出力
+import android.util.Log;
+
+
 
 public class MainActivity extends AppCompatActivity {
 
@@ -22,12 +34,56 @@ public class MainActivity extends AppCompatActivity {
     private NavigationView navigationView;
     private MapView mapView;
 
+    //データベース接続
+    private static final String TAG = "Firestore"; // ⭐ Log出力用タグを定義
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        Log.d("FirestoreTest", "Firestoreテスト開始");
+
+
         // EdgeToEdge の有効化
         EdgeToEdge.enable(this);
+
+        // Firebase 初期化
+        FirebaseApp.initializeApp(this);
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+
+        // users → user001 ドキュメント参照
+        db.collection("users").document("user001")
+                .get()
+                .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                    @Override
+                    public void onSuccess(DocumentSnapshot document) {
+                        if (document.exists()) {
+                            String name = document.getString("name");
+                            Long age = document.getLong("age");
+                            String email = document.getString("email");
+
+                            Log.d(TAG, "ユーザー名: " + name + ", 年齢: " + age + ", メール: " + email);
+                        } else {
+                            Log.d(TAG, "ドキュメントが存在しません");
+                        }
+                    }
+                })
+                .addOnFailureListener(new OnFailureListener() {
+                    @Override
+                    public void onFailure(Exception e) {
+                        Log.w(TAG, "データ取得に失敗しました", e);
+                    }
+                });
+
+
+
+
+
+
+
+
+
 
         setContentView(R.layout.activity_main);
 
