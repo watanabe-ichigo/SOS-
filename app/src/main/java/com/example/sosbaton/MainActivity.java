@@ -55,7 +55,9 @@ public class MainActivity extends AppCompatActivity {
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_home) {
-                // ホームクリック時の処理
+                // ログインクリック時の処理
+                Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+                startActivity(intent);
             } else if (id == R.id.nav_profile) {
                 // プロフィールクリック時の処理
             } else if (id == R.id.nav_settings) {

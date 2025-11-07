@@ -33,6 +33,7 @@
             android:name=".SosActivity"
             android:exported="false"
             android:label="SOS画面" />
+        <activity android:name=".LoginActivity" />
     </application>
 
 </manifest>
