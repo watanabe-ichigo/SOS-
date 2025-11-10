@@ -42,7 +42,9 @@ public class StartActivity extends AppCompatActivity {
                     .addOnSuccessListener(query -> {
                         if (query.size() > 0) {
                             // ログイン成功 → 地図画面(MainActivity)
-                            startActivity(new Intent(StartActivity.this, MainActivity.class));
+                            Intent intent = new Intent(StartActivity.this, MainActivity.class);
+                            intent.putExtra("USER_NAME", name); // ← 名前を渡す！
+                            startActivity(intent);
                             finish();
                         } else {
                             Toast.makeText(this, "一致するユーザーがいません", Toast.LENGTH_SHORT).show();

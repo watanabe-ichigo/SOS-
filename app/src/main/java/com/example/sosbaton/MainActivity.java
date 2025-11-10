@@ -2,8 +2,11 @@ package com.example.sosbaton;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
+
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -12,20 +15,14 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+
 import com.google.android.gms.maps.MapView;
 import com.google.android.material.navigation.NavigationView;
-//データベース接続
 import com.google.firebase.FirebaseApp;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-// Firestore関連
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.firebase.firestore.DocumentSnapshot;
-
-// Androidのログ出力
-import android.util.Log;
-
-
 
 public class MainActivity extends AppCompatActivity {
 
@@ -34,15 +31,13 @@ public class MainActivity extends AppCompatActivity {
     private NavigationView navigationView;
     private MapView mapView;
 
-    //データベース接続
-    private static final String TAG = "Firestore"; // ⭐ Log出力用タグを定義
+    private static final String TAG = "Firestore";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Log.d("FirestoreTest", "Firestoreテスト開始");
-
+        Log.d(TAG, "Firestoreテスト開始");
 
         // EdgeToEdge の有効化
         EdgeToEdge.enable(this);
@@ -51,8 +46,34 @@ public class MainActivity extends AppCompatActivity {
         FirebaseApp.initializeApp(this);
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
+        // 🔸 ここでレイアウトをセット（これが最初！）
+        setContentView(R.layout.activity_main);
 
-        // users → user001 ドキュメント参照
+        // --- View の取得 ---
+        drawerLayout = findViewById(R.id.drawer_layout);
+        toolbar = findViewById(R.id.toolbar);
+        navigationView = findViewById(R.id.nav_view);
+        mapView = findViewById(R.id.mapView);
+
+        // --- Toolbar を ActionBar にセット ---
+        setSupportActionBar(toolbar);
+
+        // --- ユーザー名を受け取る ---
+        String userName = getIntent().getStringExtra("USER_NAME");
+
+        // --- NavigationViewのヘッダーを取得 ---
+        View headerView = navigationView.getHeaderView(0);
+        TextView tvUserName = headerView.findViewById(R.id.tvUserName);
+
+        if (tvUserName != null) {
+            if (userName != null && !userName.isEmpty()) {
+                tvUserName.setText(userName + " さん");
+            } else {
+                tvUserName.setText("ログイン中ユーザー");
+            }
+        }
+
+        // --- Firestoreテスト ---
         db.collection("users").document("user001")
                 .get()
                 .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
@@ -76,26 +97,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 });
 
-
-
-
-
-
-
-
-
-
-        setContentView(R.layout.activity_main);
-
-        // --- View の取得 ---
-        drawerLayout = findViewById(R.id.drawer_layout);
-        toolbar = findViewById(R.id.toolbar);
-        navigationView = findViewById(R.id.nav_view);
-        mapView = findViewById(R.id.mapView);
-
-        // --- Toolbar を ActionBar にセット ---
-        setSupportActionBar(toolbar);
-
         // --- ハンバーガーアイコンで Drawer 開閉 ---
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this,
@@ -111,11 +112,9 @@ public class MainActivity extends AppCompatActivity {
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_home) {
-                // ログインクリック時の処理
                 Intent intent = new Intent(MainActivity.this, LoginActivity.class);
                 startActivity(intent);
             } else if (id == R.id.nav_profile) {
-                // プロフィールクリック時の処理
                 Intent intent = new Intent(MainActivity.this, LoginActivity.class);
                 startActivity(intent);
             } else if (id == R.id.nav_settings) {
@@ -133,49 +132,48 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        // --- MapView 初期化（必要なら） ---
-        mapView.onCreate(savedInstanceState);
+        // --- MapView 初期化 ---
+        if (mapView != null) {
+            mapView.onCreate(savedInstanceState);
+        }
 
-        //---SOSボタン---
+        // --- SOSボタン ---
         Button sosButton = findViewById(R.id.sosButton);
-        sosButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // SosActivityに画面遷移
+        if (sosButton != null) {
+            sosButton.setOnClickListener(v -> {
                 Intent intent = new Intent(MainActivity.this, SosActivity.class);
                 startActivity(intent);
-            }
-
-        });
+            });
+        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        mapView.onResume();
+        if (mapView != null) mapView.onResume();
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-        mapView.onPause();
+        if (mapView != null) mapView.onPause();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        mapView.onDestroy();
+        if (mapView != null) mapView.onDestroy();
     }
 
     @Override
     public void onLowMemory() {
         super.onLowMemory();
-        mapView.onLowMemory();
+        if (mapView != null) mapView.onLowMemory();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        mapView.onSaveInstanceState(outState);
+        if (mapView != null) mapView.onSaveInstanceState(outState);
     }
 }
