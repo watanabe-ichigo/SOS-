@@ -116,6 +116,8 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(intent);
             } else if (id == R.id.nav_profile) {
                 // プロフィールクリック時の処理
+                Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+                startActivity(intent);
             } else if (id == R.id.nav_settings) {
                 // 設定クリック時の処理
             }
