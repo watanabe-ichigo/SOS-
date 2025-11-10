@@ -68,4 +68,6 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+    //位置情報取得ピン立て処理
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 }

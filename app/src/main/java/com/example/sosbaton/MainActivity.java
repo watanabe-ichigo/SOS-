@@ -1,5 +1,10 @@
 package com.example.sosbaton;
 
+//位置情報取得
+
+import android.location.Location;
+
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -24,7 +29,23 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 
-public class MainActivity extends AppCompatActivity {
+//位置情報取得
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.core.app.ActivityCompat;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+
+
+
+public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
+
 
     private DrawerLayout drawerLayout;
     private Toolbar toolbar;
@@ -32,6 +53,16 @@ public class MainActivity extends AppCompatActivity {
     private MapView mapView;
 
     private static final String TAG = "Firestore";
+
+
+    //現在地取得ピン立て処理
+    private GoogleMap googleMap;
+
+    private FusedLocationProviderClient fusedLocationClient;
+
+
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +79,10 @@ public class MainActivity extends AppCompatActivity {
 
         // 🔸 ここでレイアウトをセット（これが最初！）
         setContentView(R.layout.activity_main);
+
+        // FusedLocationProviderClient の初期化を追加（現在地取得）
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
 
         // --- View の取得 ---
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -135,6 +170,9 @@ public class MainActivity extends AppCompatActivity {
         // --- MapView 初期化 ---
         if (mapView != null) {
             mapView.onCreate(savedInstanceState);
+
+            //位置情報取得ピン立て処理
+            mapView.getMapAsync(this);
         }
 
         // --- SOSボタン ---
@@ -176,4 +214,59 @@ public class MainActivity extends AppCompatActivity {
         super.onSaveInstanceState(outState);
         if (mapView != null) mapView.onSaveInstanceState(outState);
     }
+
+
+    //現在位置を赤ピンで表示
+    private void setCurrentLocationMarker() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+            return;
+        }
+
+        googleMap.setMyLocationEnabled(true);
+
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(this, location -> {
+                    if (location != null) {
+                        LatLng current = new LatLng(location.getLatitude(), location.getLongitude());
+                        googleMap.addMarker(new MarkerOptions()
+                                .position(current)
+                                .title("現在地")
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))); // これで赤ピン
+                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current, 15));
+                        Log.d(TAG, "現在地取得成功: " + location.getLatitude() + ", " + location.getLongitude());
+                    } else {
+                        Log.d(TAG, "現在地が取得できませんでした");
+                    }
+                });
+    }
+
+
+    //現在地取得ピン立て処理
+    @Override
+    public void onMapReady(GoogleMap map) {
+        googleMap = map;
+        setCurrentLocationMarker();
+
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == 1) { // setCurrentLocationMarker() で指定した requestCode と一致
+            if (grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 権限が許可された場合
+                setCurrentLocationMarker(); // 現在地ピンを立てる
+                Log.d(TAG, "位置情報権限が許可されました");
+            } else {
+                // 権限が拒否された場合
+                Log.d(TAG, "位置情報権限が拒否されました");
+                // 必要に応じてユーザーに通知する
+            }
+        }
+    }
+
 }
