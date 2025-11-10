@@ -24,6 +24,7 @@ public class StartActivity extends AppCompatActivity {
         EditText etName = findViewById(R.id.etName);
         EditText etEmail = findViewById(R.id.etEmail);
         Button btnLogin = findViewById(R.id.btnLogin);
+        Button btnRegister = findViewById(R.id.btnRegister);
 
         btnLogin.setOnClickListener(v -> {
 
@@ -51,6 +52,11 @@ public class StartActivity extends AppCompatActivity {
                     .addOnFailureListener(e ->
                             Toast.makeText(this, "通信エラー：" + e.getMessage(), Toast.LENGTH_SHORT).show()
                     );
+        });
+
+        btnRegister.setOnClickListener(v -> {
+            Intent intent = new Intent(StartActivity.this, RegisterActivity.class);
+            startActivity(intent);
         });
     }
 }
