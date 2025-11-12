@@ -10,6 +10,8 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,6 +19,7 @@ import java.util.Map;
 public class RegisterActivity extends AppCompatActivity {
 
     private FirebaseFirestore db;
+    private FirebaseAuth auth; // 🔹 FirebaseAuth 追加
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,6 +27,7 @@ public class RegisterActivity extends AppCompatActivity {
         setContentView(R.layout.activity_register);
 
         db = FirebaseFirestore.getInstance();
+        auth = FirebaseAuth.getInstance(); // 🔹 初期化
 
         EditText etUsername = findViewById(R.id.etUsername);
         EditText etEmail = findViewById(R.id.etEmail);
@@ -32,7 +36,6 @@ public class RegisterActivity extends AppCompatActivity {
 
         ImageButton btnTogglePassword = findViewById(R.id.btnTogglePassword);
         ImageButton btnToggleConfirm = findViewById(R.id.btnToggleConfirm);
-
         Button btnRegister = findViewById(R.id.btnRegister);
 
         // パスワード表示切替
@@ -71,20 +74,34 @@ public class RegisterActivity extends AppCompatActivity {
                 return;
             }
 
-            Map<String, Object> user = new HashMap<>();
-            user.put("name", username);
-            user.put("email", email);
-            user.put("password", password);
+            // 🔹 Firebase Authentication に登録
+            auth.createUserWithEmailAndPassword(email, password)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            FirebaseUser firebaseUser = auth.getCurrentUser();
+                            if (firebaseUser != null) {
+                                String uid = firebaseUser.getUid();
 
-            db.collection("users")
-                    .add(user)
-                    .addOnSuccessListener(documentReference -> {
-                        Toast.makeText(this, "登録完了しました", Toast.LENGTH_SHORT).show();
-                        finish(); // 登録完了後に前の画面に戻る
-                    })
-                    .addOnFailureListener(e ->
-                            Toast.makeText(this, "登録に失敗しました：" + e.getMessage(), Toast.LENGTH_SHORT).show()
-                    );
+                                // 🔹 Firestore に UID をキーに保存
+                                Map<String, Object> userMap = new HashMap<>();
+                                userMap.put("username", username);
+                                userMap.put("email", email);
+                                userMap.put("iconUrl", ""); // 後で設定可能
+
+                                db.collection("users").document(uid)
+                                        .set(userMap)
+                                        .addOnSuccessListener(aVoid -> {
+                                            Toast.makeText(this, "登録完了しました", Toast.LENGTH_SHORT).show();
+                                            finish(); // 登録完了後に戻る
+                                        })
+                                        .addOnFailureListener(e ->
+                                                Toast.makeText(this, "Firestore保存失敗：" + e.getMessage(), Toast.LENGTH_SHORT).show()
+                                        );
+                            }
+                        } else {
+                            Toast.makeText(this, "Auth登録失敗：" + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
+                        }
+                    });
         });
     }
 }

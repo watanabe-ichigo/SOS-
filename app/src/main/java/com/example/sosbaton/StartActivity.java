@@ -8,10 +8,13 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 public class StartActivity extends AppCompatActivity {
 
+    private FirebaseAuth auth;
     private FirebaseFirestore db;
 
     @Override
@@ -19,41 +22,53 @@ public class StartActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start);
 
+        auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
 
-        EditText etName = findViewById(R.id.etName);
         EditText etEmail = findViewById(R.id.etEmail);
+        EditText etPassword = findViewById(R.id.etPassword); // ← パスワード欄追加してね！
         Button btnLogin = findViewById(R.id.btnLogin);
         Button btnRegister = findViewById(R.id.btnRegister);
 
         btnLogin.setOnClickListener(v -> {
 
-            String name = etName.getText().toString().trim();
             String email = etEmail.getText().toString().trim();
+            String password = etPassword.getText().toString().trim();
 
-            if (name.isEmpty() || email.isEmpty()) {
-                Toast.makeText(this, "名前とメールを入力してください", Toast.LENGTH_SHORT).show();
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "メールとパスワードを入力してください", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            db.collection("users")
-                    .whereEqualTo("name", name)
-                    .whereEqualTo("email", email)
-                    .get()
-                    .addOnSuccessListener(query -> {
-                        if (query.size() > 0) {
-                            // ログイン成功 → 地図画面(MainActivity)
-                            Intent intent = new Intent(StartActivity.this, MainActivity.class);
-                            intent.putExtra("USER_NAME", name); // ← 名前を渡す！
-                            startActivity(intent);
-                            finish();
+            // 🔑 Firebase Authenticationでログイン
+            auth.signInWithEmailAndPassword(email, password)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            FirebaseUser user = auth.getCurrentUser();
+
+                            if (user != null) {
+                                // Firestore からユーザー情報を取得（名前など）
+                                db.collection("users").document(user.getUid())
+                                        .get()
+                                        .addOnSuccessListener(doc -> {
+                                            String name = doc.contains("name")
+                                                    ? doc.getString("name")
+                                                    : "名無し";
+
+                                            // ログイン成功 → 地図画面へ
+                                            Intent intent = new Intent(StartActivity.this, MainActivity.class);
+                                            intent.putExtra("USER_NAME", name);
+                                            startActivity(intent);
+                                            finish();
+                                        })
+                                        .addOnFailureListener(e ->
+                                                Toast.makeText(this, "ユーザー情報取得失敗：" + e.getMessage(), Toast.LENGTH_SHORT).show());
+                            }
+
                         } else {
-                            Toast.makeText(this, "一致するユーザーがいません", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(this, "ログイン失敗：" + task.getException().getMessage(), Toast.LENGTH_SHORT).show();
                         }
-                    })
-                    .addOnFailureListener(e ->
-                            Toast.makeText(this, "通信エラー：" + e.getMessage(), Toast.LENGTH_SHORT).show()
-                    );
+                    });
         });
 
         btnRegister.setOnClickListener(v -> {

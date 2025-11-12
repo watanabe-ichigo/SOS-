@@ -1,11 +1,8 @@
 package com.example.sosbaton;
 
-//位置情報取得
-
-import android.location.Location;
-
-
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -19,148 +16,116 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.app.ActivityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
-import com.google.android.gms.maps.MapView;
-import com.google.android.material.navigation.NavigationView;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
-
-//位置情報取得
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
-import android.Manifest;
-import android.content.pm.PackageManager;
-import androidx.core.app.ActivityCompat;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-
-
+import com.google.android.material.navigation.NavigationView;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
-
 
     private DrawerLayout drawerLayout;
     private Toolbar toolbar;
     private NavigationView navigationView;
     private MapView mapView;
-
     private static final String TAG = "Firestore";
 
-
-    //現在地取得ピン立て処理
     private GoogleMap googleMap;
-
     private FusedLocationProviderClient fusedLocationClient;
 
-
-
-
+    private FirebaseFirestore db;
+    private FirebaseAuth auth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Log.d(TAG, "Firestoreテスト開始");
-
-        // EdgeToEdge の有効化
+        // EdgeToEdge
         EdgeToEdge.enable(this);
 
         // Firebase 初期化
         FirebaseApp.initializeApp(this);
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db = FirebaseFirestore.getInstance();
+        auth = FirebaseAuth.getInstance();
 
-        // 🔸 ここでレイアウトをセット（これが最初！）
+        // レイアウトセット
         setContentView(R.layout.activity_main);
 
-        // FusedLocationProviderClient の初期化を追加（現在地取得）
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-
-        // --- View の取得 ---
+        // --- View取得 ---
         drawerLayout = findViewById(R.id.drawer_layout);
         toolbar = findViewById(R.id.toolbar);
         navigationView = findViewById(R.id.nav_view);
         mapView = findViewById(R.id.mapView);
 
-        // --- Toolbar を ActionBar にセット ---
         setSupportActionBar(toolbar);
 
-        // --- ユーザー名を受け取る ---
-        String userName = getIntent().getStringExtra("USER_NAME");
-
-        // --- NavigationViewのヘッダーを取得 ---
+        // --- ログイン中ユーザー情報を取得してヘッダーに表示 ---
+        FirebaseUser currentUser = auth.getCurrentUser();
         View headerView = navigationView.getHeaderView(0);
         TextView tvUserName = headerView.findViewById(R.id.tvUserName);
 
-        if (tvUserName != null) {
-            if (userName != null && !userName.isEmpty()) {
-                tvUserName.setText(userName + " さん");
-            } else {
-                tvUserName.setText("ログイン中ユーザー");
-            }
+        if (currentUser != null) {
+            String uid = currentUser.getUid();
+            db.collection("users").document(uid)
+                    .get()
+                    .addOnSuccessListener(document -> {
+                        if (document.exists()) {
+                            String name = document.getString("username");
+                            if (tvUserName != null) tvUserName.setText(name + " さん");
+
+                            // 🔹 アイコン表示したい場合
+                            // ImageView ivUserIcon = headerView.findViewById(R.id.ivUserIcon);
+                            // String iconUrl = document.getString("iconUrl");
+                            // Glide.with(this).load(iconUrl).into(ivUserIcon);
+
+                        } else {
+                            Log.d(TAG, "Firestore にドキュメントが存在しません");
+                        }
+                    })
+                    .addOnFailureListener(e -> Log.w(TAG, "Firestore 取得失敗", e));
+        } else {
+            if (tvUserName != null) tvUserName.setText("ゲスト");
         }
 
-        // --- Firestoreテスト ---
-        db.collection("users").document("user001")
-                .get()
-                .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
-                    @Override
-                    public void onSuccess(DocumentSnapshot document) {
-                        if (document.exists()) {
-                            String name = document.getString("name");
-                            Long age = document.getLong("age");
-                            String email = document.getString("email");
-
-                            Log.d(TAG, "ユーザー名: " + name + ", 年齢: " + age + ", メール: " + email);
-                        } else {
-                            Log.d(TAG, "ドキュメントが存在しません");
-                        }
-                    }
-                })
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(Exception e) {
-                        Log.w(TAG, "データ取得に失敗しました", e);
-                    }
-                });
-
-        // --- ハンバーガーアイコンで Drawer 開閉 ---
+        // --- Drawer 開閉 ---
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
-                this,
-                drawerLayout,
-                toolbar,
+                this, drawerLayout, toolbar,
                 R.string.navigation_drawer_open,
                 R.string.navigation_drawer_close
         );
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
-        // --- NavigationView のメニュークリック処理 ---
+        // --- NavigationView メニュー ---
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_home) {
-                Intent intent = new Intent(MainActivity.this, LoginActivity.class);
-                startActivity(intent);
+                startActivity(new Intent(MainActivity.this, LoginActivity.class));
             } else if (id == R.id.nav_profile) {
-                Intent intent = new Intent(MainActivity.this, LoginActivity.class);
-                startActivity(intent);
+                startActivity(new Intent(MainActivity.this, LoginActivity.class));
             } else if (id == R.id.nav_settings) {
-                // 設定クリック時の処理
+                // 設定
             }
-
             drawerLayout.closeDrawers();
             return true;
         });
 
-        // --- WindowInsetsListener で EdgeToEdge 対応 ---
+        // --- EdgeToEdge対応 ---
         ViewCompat.setOnApplyWindowInsetsListener(drawerLayout, (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -170,18 +135,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // --- MapView 初期化 ---
         if (mapView != null) {
             mapView.onCreate(savedInstanceState);
-
-            //位置情報取得ピン立て処理
             mapView.getMapAsync(this);
         }
 
         // --- SOSボタン ---
         Button sosButton = findViewById(R.id.sosButton);
         if (sosButton != null) {
-            sosButton.setOnClickListener(v -> {
-                Intent intent = new Intent(MainActivity.this, SosActivity.class);
-                startActivity(intent);
-            });
+            sosButton.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, SosActivity.class)));
         }
     }
 
@@ -215,8 +175,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (mapView != null) mapView.onSaveInstanceState(outState);
     }
 
-
-    //現在位置を赤ピンで表示
+    // --- 現在地赤ピン ---
     private void setCurrentLocationMarker() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -233,7 +192,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         googleMap.addMarker(new MarkerOptions()
                                 .position(current)
                                 .title("現在地")
-                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))); // これで赤ピン
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
                         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current, 15));
                         Log.d(TAG, "現在地取得成功: " + location.getLatitude() + ", " + location.getLongitude());
                     } else {
@@ -242,31 +201,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 });
     }
 
-
-    //現在地取得ピン立て処理
     @Override
     public void onMapReady(GoogleMap map) {
         googleMap = map;
         setCurrentLocationMarker();
-
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == 1) { // setCurrentLocationMarker() で指定した requestCode と一致
+        if (requestCode == 1) {
             if (grantResults.length > 0
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // 権限が許可された場合
-                setCurrentLocationMarker(); // 現在地ピンを立てる
+                setCurrentLocationMarker();
                 Log.d(TAG, "位置情報権限が許可されました");
             } else {
-                // 権限が拒否された場合
                 Log.d(TAG, "位置情報権限が拒否されました");
-                // 必要に応じてユーザーに通知する
             }
         }
     }
-
 }

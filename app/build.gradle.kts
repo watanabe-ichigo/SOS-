@@ -55,7 +55,10 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
 
 // 任意：Analytics（使う場合だけ残してOK）
-    implementation("com.google.firebase:firebase-analytics")
+    //implementation("com.google.firebase:firebase-analytics")
+
+    // 🔽 ここにこれを追加！！
+    implementation("com.google.firebase:firebase-auth")
 
 
 
@@ -64,6 +67,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation(libs.play.services.maps)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
