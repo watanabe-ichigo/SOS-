@@ -47,20 +47,44 @@
             app:layout_constraintTop_toBottomOf="@id/toolbar"
             app:layout_constraintVertical_bias="0.0" />
 
-        <Button
-            android:id="@+id/sosButton"
-            android:layout_width="75dp"
-            android:layout_height="75dp"
-            android:background="@drawable/round_button"
-            android:backgroundTint="@null"
-            android:text="SOS"
-            android:textColor="@android:color/white"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.952"
+        <LinearLayout
+            android:id="@+id/bottom_menu"
+            android:layout_width="0dp"
+            android:layout_height="60dp"
+            android:background="#DDFFFFFF"
+            android:gravity="center"
+            android:orientation="horizontal"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.948" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <ImageButton
+                android:id="@+id/btn_pin"
+                android:layout_width="0dp"
+                android:layout_height="60dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:src="@drawable/pin_green" />
+
+            <ImageButton
+                android:id="@+id/btn_post"
+                android:layout_width="6dp"
+                android:layout_height="60dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:src="@drawable/pin_add" />
+
+            <ImageButton
+                android:id="@+id/btn_call"
+                android:layout_width="0dp"
+                android:layout_height="60dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:backgroundTint="#FF0000"
+                android:src="@drawable/call" />
+
+        </LinearLayout>
+        <!-- ▲▲ 下のメニューここまで ▲▲ -->
 
 
     </androidx.constraintlayout.widget.ConstraintLayout>
