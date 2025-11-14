@@ -9,6 +9,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+
+
+
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -25,6 +28,7 @@ import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
@@ -34,6 +38,10 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationRequest;
+
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
@@ -46,8 +54,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private GoogleMap googleMap;
     private FusedLocationProviderClient fusedLocationClient;
 
+    private Marker myMarker;
+//    private LocationCallback locationCallback;
+
     private FirebaseFirestore db;
     private FirebaseAuth auth;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -139,6 +151,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         // --- SOSボタン ---
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
         Button sosButton = findViewById(R.id.sosButton);
         if (sosButton != null) {
             sosButton.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, SosActivity.class)));
@@ -147,12 +178,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // --- Firebase 初期化 ---
         FirebaseApp.initializeApp(this);
         FirebaseFirestore db = FirebaseFirestore.getInstance();
-
-
-
-
-
-
 
 
     }
@@ -238,6 +263,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
                 })
                 .addOnFailureListener(e -> Log.w("FirestorePin", "取得失敗", e));
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            startLocationUpdates();
+        }
     }
 
     @Override
@@ -247,10 +277,54 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (grantResults.length > 0
                     && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 setCurrentLocationMarker();
+                startLocationUpdates();
                 Log.d(TAG, "位置情報権限が許可されました");
             } else {
                 Log.d(TAG, "位置情報権限が拒否されました");
             }
         }
+    }
+
+    private com.google.android.gms.location.LocationCallback locationCallback =
+            new com.google.android.gms.location.LocationCallback() {
+                @Override
+                public void onLocationResult(com.google.android.gms.location.LocationResult locationResult) {
+                    if (locationResult == null) return;
+
+                    android.location.Location location = locationResult.getLastLocation();
+                    LatLng current = new LatLng(location.getLatitude(), location.getLongitude());
+
+                    if (myMarker == null) {
+                        myMarker = googleMap.addMarker(
+                                new MarkerOptions()
+                                        .position(current)
+                                        .title("現在地（追尾）")
+                                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                        );
+                    } else {
+                        myMarker.setPosition(current);
+                    }
+
+                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current, 17));
+                }
+            };
+
+    // --- 位置情報追尾開始 ---
+    private void startLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        LocationRequest locationRequest = LocationRequest.create();
+        locationRequest.setInterval(3000); // 3秒ごと
+        locationRequest.setFastestInterval(1000); // 最短1秒ごとに更新
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
+        fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                getMainLooper()
+        );
     }
 }
