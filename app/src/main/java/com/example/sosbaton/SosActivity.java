@@ -7,8 +7,6 @@ import android.widget.Button;
 import android.content.Intent;
 import android.net.Uri;
 
-
-
 public class SosActivity extends AppCompatActivity {
 
     @Override
@@ -35,6 +33,4 @@ public class SosActivity extends AppCompatActivity {
             startActivity(intent);
         });
     }
-
-
 }
