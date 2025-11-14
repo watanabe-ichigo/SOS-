@@ -143,6 +143,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (sosButton != null) {
             sosButton.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, SosActivity.class)));
         }
+
+        // --- Firebase 初期化 ---
+        FirebaseApp.initializeApp(this);
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+
+
+
+
+
+
+
     }
 
     @Override
@@ -205,6 +217,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onMapReady(GoogleMap map) {
         googleMap = map;
         setCurrentLocationMarker();
+
+        // --- Firestoreからpinsを取得してマップにピンを立てる ---
+        db.collection("pins")
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (DocumentSnapshot doc : queryDocumentSnapshots) {
+                        Double lat = doc.getDouble("lat_x");
+                        Double lng = doc.getDouble("lng_y");
+                        String name = doc.getString("name");
+
+                        if (lat != null && lng != null) {
+                            LatLng pinPosition = new LatLng(lat, lng);
+                            googleMap.addMarker(new MarkerOptions()
+                                    .position(pinPosition)
+                                    .title(name != null ? name : "未設定ピン")
+                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
+                            Log.d("FirestorePin", "ピン追加 → " + name + " (" + lat + "," + lng + ")");
+                        }
+                    }
+                })
+                .addOnFailureListener(e -> Log.w("FirestorePin", "取得失敗", e));
     }
 
     @Override
