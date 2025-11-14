@@ -8,8 +8,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-
-
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 
 
 import androidx.activity.EdgeToEdge;
@@ -59,7 +59,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private FirebaseFirestore db;
     private FirebaseAuth auth;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -151,33 +150,33 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         // --- SOSボタン ---
+        ImageButton btn_call = findViewById(R.id.btn_call);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-        Button sosButton = findViewById(R.id.sosButton);
-        if (sosButton != null) {
-            sosButton.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, SosActivity.class)));
+        if (btn_call != null) {
+            btn_call.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, SosActivity.class);
+                startActivity(intent);
+            });
         }
+
+        LinearLayout bottomMenu = findViewById(R.id.bottom_menu);
+
+        ViewCompat.setOnApplyWindowInsetsListener(bottomMenu, (v, insets) -> {
+            int bottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom;
+            v.setPadding(0, 0, 0, bottom);  // ← 下にだけナビバーの高さを足す
+            return insets;
+        });
+
 
         // --- Firebase 初期化 ---
         FirebaseApp.initializeApp(this);
         FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+
+
+
+
+
 
 
     }
