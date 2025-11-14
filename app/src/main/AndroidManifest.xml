@@ -45,6 +45,8 @@
             android:label="SOS画面" />
         <activity android:name=".LoginActivity" />
         <activity android:name=".RegisterActivity" />
+        <activity android:name=".ProfileActivity" />
+
     </application>
 
 </manifest>

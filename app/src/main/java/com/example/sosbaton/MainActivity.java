@@ -117,7 +117,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (id == R.id.nav_home) {
                 startActivity(new Intent(MainActivity.this, LoginActivity.class));
             } else if (id == R.id.nav_profile) {
-                startActivity(new Intent(MainActivity.this, LoginActivity.class));
+                startActivity(new Intent(MainActivity.this, ProfileActivity.class));
             } else if (id == R.id.nav_settings) {
                 // 設定
             }
