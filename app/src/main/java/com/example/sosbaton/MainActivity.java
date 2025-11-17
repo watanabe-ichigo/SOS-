@@ -74,6 +74,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // レイアウトセット
         setContentView(R.layout.activity_main);
+        //SOSでユーザネームを取得
+        ImageButton btn_call = findViewById(R.id.btn_call);
+        if (btn_call != null) {
+            btn_call.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, SosActivity.class);
+
+                // headerView から TextView を取得して username を Intent に入れる
+                View headerView = navigationView.getHeaderView(0);
+                TextView tvUserName = headerView.findViewById(R.id.tvUserName);
+                String username = tvUserName != null ? tvUserName.getText().toString() : "ゲスト";
+
+                intent.putExtra("username", username);
+                startActivity(intent);
+            });
+        }
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
@@ -150,7 +165,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         // --- SOSボタン ---
-        ImageButton btn_call = findViewById(R.id.btn_call);
+
+
+
 
         if (btn_call != null) {
             btn_call.setOnClickListener(v -> {
@@ -326,4 +343,5 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 getMainLooper()
         );
     }
+
 }

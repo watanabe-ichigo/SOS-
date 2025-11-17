@@ -50,7 +50,7 @@
         <LinearLayout
             android:id="@+id/bottom_menu"
             android:layout_width="0dp"
-            android:layout_height="60dp"
+            android:layout_height="100dp"
             android:background="#DDFFFFFF"
             android:gravity="center"
             android:orientation="horizontal"
@@ -61,7 +61,7 @@
             <ImageButton
                 android:id="@+id/btn_pin"
                 android:layout_width="0dp"
-                android:layout_height="60dp"
+                android:layout_height="80dp"
                 android:layout_weight="1"
                 android:background="@android:color/transparent"
                 android:src="@drawable/pin_green" />
@@ -69,7 +69,7 @@
             <ImageButton
                 android:id="@+id/btn_post"
                 android:layout_width="6dp"
-                android:layout_height="60dp"
+                android:layout_height="80dp"
                 android:layout_weight="1"
                 android:background="@android:color/transparent"
                 android:src="@drawable/pin_add" />
@@ -77,7 +77,7 @@
             <ImageButton
                 android:id="@+id/btn_call"
                 android:layout_width="0dp"
-                android:layout_height="60dp"
+                android:layout_height="80dp"
                 android:layout_weight="1"
                 android:background="@android:color/transparent"
                 android:backgroundTint="#FF0000"
