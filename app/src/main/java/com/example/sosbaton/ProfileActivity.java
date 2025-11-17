@@ -3,6 +3,8 @@ package com.example.sosbaton;
 import android.os.Bundle;
 import android.widget.Button;
 import androidx.appcompat.app.AppCompatActivity;
+import android.widget.ImageButton;
+
 
 public class ProfileActivity extends AppCompatActivity {
     @Override
@@ -10,10 +12,10 @@ public class ProfileActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        Button backButton = findViewById(R.id.button);
+        ImageButton backButton = findViewById(R.id.backButton); // ←ここ！
         backButton.setOnClickListener(v -> {
-            // 単純に前の画面（MainActivity）へ戻る
             getOnBackPressedDispatcher().onBackPressed();
         });
     }
 }
+
