@@ -304,7 +304,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         myMarker.setPosition(current);
                     }
 
-                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current, 17));
+//                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current, 17));
                 }
             };
 
