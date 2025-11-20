@@ -25,15 +25,15 @@ public class SosActivity extends AppCompatActivity {
 
     private FusedLocationProviderClient fusedLocationClient;
     private FirebaseFirestore db;
-    private String UserName;
+    private String userName;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_sos);
 
-        UserName = getIntent().getStringExtra("UserName");
-        if (UserName == null) UserName = "ゲスト";
+        userName = getIntent().getStringExtra("username");
+        if (userName == null) userName = "ゲスト";
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
         db = FirebaseFirestore.getInstance();
@@ -126,8 +126,8 @@ public class SosActivity extends AppCompatActivity {
                                     pinData.put("id", newId); // 連番
                                     pinData.put("lat_x", lat);
                                     pinData.put("lng_y", lng);
-                                    pinData.put("name", UserName);
-                                    pinData.put("type", 2);
+                                    pinData.put("name",userName);
+                                    pinData.put("type", type);
 
                                     // ドキュメントを自動生成
                                     db.collection("pins")
