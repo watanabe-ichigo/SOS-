@@ -12,6 +12,14 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import android.widget.ImageView;
 import android.widget.EditText;
+import android.view.View;
+
+import androidx.appcompat.app.AlertDialog;
+
+import com.google.firebase.auth.AuthCredential;
+import com.google.firebase.auth.EmailAuthProvider;
+
+
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -22,57 +30,67 @@ public class ProfileActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
         auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
 
-        // 戻るボタン
+        // 戻る
         ImageButton backButton = findViewById(R.id.backButton);
         backButton.setOnClickListener(v -> getOnBackPressedDispatcher().onBackPressed());
 
-        // TextView を取得
-        tvUserNameTop = findViewById(R.id.tvUserNameTop); // 上部のユーザー名
-        tvValueName = findViewById(R.id.tvValueName);     // 名前欄
-        tvValueEmail = findViewById(R.id.tvValueEmail);   // メール欄
+        // TextView
+        tvUserNameTop = findViewById(R.id.tvUserNameTop);
+        tvValueName = findViewById(R.id.tvValueName);
+        tvValueEmail = findViewById(R.id.tvValueEmail);
 
-        // ✏️ ここで編集ボタンも取得
+        // Edit ボタン
         ImageView btnEditName = findViewById(R.id.btnEditName);
+        ImageView btnEditEmail = findViewById(R.id.btnEditEmail);
+        ImageView btnEditPassword = findViewById(R.id.btnEditPassword);
+
         btnEditName.setOnClickListener(v -> showEditNameDialog());
+        btnEditEmail.setOnClickListener(v -> showEditEmailDialog());
+        btnEditPassword.setOnClickListener(v -> showEditPasswordDialog());
 
-        FirebaseUser user = auth.getCurrentUser();
-        if (user != null) {
-            String email = user.getEmail(); // メール
-            String uid = user.getUid();     // UID
-
-            tvValueEmail.setText(email);
-
-            // Firestoreから名前を取得
-            db.collection("users").document(uid)
-                    .get()
-                    .addOnSuccessListener(doc -> {
-                        if (doc.exists() && doc.contains("username")) {
-                            String name = doc.getString("username");
-                            tvUserNameTop.setText(name + " さん");
-                            tvValueName.setText(name);
-                        } else {
-                            tvUserNameTop.setText("名無し さん");
-                            tvValueName.setText("名無し");
-                        }
-                    })
-                    .addOnFailureListener(e ->
-                            Toast.makeText(ProfileActivity.this, "ユーザー情報取得失敗: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-        }
+        // ユーザー情報読み込み
+        loadUserInfo();
     }
+
+    private void loadUserInfo() {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) return;
+
+        String email = user.getEmail();
+        String uid = user.getUid();
+
+        tvValueEmail.setText(email);
+
+        db.collection("users").document(uid)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists() && doc.contains("username")) {
+                        String name = doc.getString("username");
+                        tvUserNameTop.setText(name + " さん");
+                        tvValueName.setText(name);
+                    }
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "ユーザー情報取得失敗: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+    }
+
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    // ① 名前変更ダイアログ
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
     private void showEditNameDialog() {
         FirebaseUser user = auth.getCurrentUser();
         if (user == null) return;
 
         String uid = user.getUid();
 
-        // ダイアログ作成
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("名前を変更");
 
         final EditText input = new EditText(this);
@@ -81,17 +99,14 @@ public class ProfileActivity extends AppCompatActivity {
 
         builder.setPositiveButton("保存", (dialog, which) -> {
             String newName = input.getText().toString().trim();
-
             if (newName.isEmpty()) {
-                Toast.makeText(this, "新たなユーザーネームを入力してください", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "名前を入力してね", Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            // Firestore 更新
             db.collection("users").document(uid)
                     .update("username", newName)
                     .addOnSuccessListener(aVoid -> {
-                        // UI 更新
                         tvValueName.setText(newName);
                         tvUserNameTop.setText(newName + " さん");
                         Toast.makeText(this, "更新しました", Toast.LENGTH_SHORT).show();
@@ -100,9 +115,95 @@ public class ProfileActivity extends AppCompatActivity {
                             Toast.makeText(this, "更新失敗 " + e.getMessage(), Toast.LENGTH_SHORT).show());
         });
 
-        builder.setNegativeButton("キャンセル", (dialog, which) -> dialog.cancel());
+        builder.setNegativeButton("キャンセル", (d, w) -> d.cancel());
         builder.show();
     }
 
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    // ② メール変更ダイアログ（再認証付き）
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    private void showEditEmailDialog() {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) return;
 
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("メールを変更");
+
+        View view = getLayoutInflater().inflate(R.layout.dialog_change_email, null);
+        EditText etCurrentPassword = view.findViewById(R.id.etCurrentPassword);
+        EditText etNewEmail = view.findViewById(R.id.etNewEmail);
+
+        builder.setView(view);
+
+        builder.setPositiveButton("変更", (dialog, which) -> {
+            String currentPassword = etCurrentPassword.getText().toString();
+            String newEmail = etNewEmail.getText().toString().trim();
+
+            if (currentPassword.isEmpty() || newEmail.isEmpty()) {
+                Toast.makeText(this, "必要な項目を入力してね", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            AuthCredential credential = EmailAuthProvider
+                    .getCredential(user.getEmail(), currentPassword);
+
+            // 🔐 再認証
+            user.reauthenticate(credential).addOnSuccessListener(aVoid -> {
+                user.updateEmail(newEmail)
+                        .addOnSuccessListener(v -> {
+                            tvValueEmail.setText(newEmail);
+                            Toast.makeText(this, "メールを変更しました", Toast.LENGTH_SHORT).show();
+                        })
+                        .addOnFailureListener(e ->
+                                Toast.makeText(this, "変更失敗: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }).addOnFailureListener(e ->
+                    Toast.makeText(this, "パスワードが違います", Toast.LENGTH_SHORT).show());
+        });
+
+        builder.setNegativeButton("キャンセル", (d, w) -> d.cancel());
+        builder.show();
+    }
+
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    // ③ パスワード変更ダイアログ（再認証付き）
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    private void showEditPasswordDialog() {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) return;
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("パスワード変更");
+
+        View view = getLayoutInflater().inflate(R.layout.dialog_change_password, null);
+        EditText etCurrentPassword = view.findViewById(R.id.etCurrentPassword);
+        EditText etNewPassword = view.findViewById(R.id.etNewPassword);
+
+        builder.setView(view);
+
+        builder.setPositiveButton("変更", (dialog, which) -> {
+            String currentPassword = etCurrentPassword.getText().toString();
+            String newPassword = etNewPassword.getText().toString();
+
+            if (currentPassword.isEmpty() || newPassword.isEmpty()) {
+                Toast.makeText(this, "必要な項目を入力してね", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            AuthCredential credential = EmailAuthProvider
+                    .getCredential(user.getEmail(), currentPassword);
+
+            // 再認証
+            user.reauthenticate(credential).addOnSuccessListener(aVoid -> {
+                user.updatePassword(newPassword)
+                        .addOnSuccessListener(v ->
+                                Toast.makeText(this, "パスワードを変更しました", Toast.LENGTH_SHORT).show())
+                        .addOnFailureListener(e ->
+                                Toast.makeText(this, "変更失敗: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }).addOnFailureListener(e ->
+                    Toast.makeText(this, "現在のパスワードが違います", Toast.LENGTH_SHORT).show());
+        });
+
+        builder.setNegativeButton("キャンセル", (d, w) -> d.cancel());
+        builder.show();
+    }
 }
