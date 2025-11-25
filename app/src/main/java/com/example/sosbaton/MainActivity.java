@@ -54,6 +54,7 @@ import com.example.sosbaton.BuildConfig;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
+    private String userName = "ゲスト";
     private DrawerLayout drawerLayout;
     private Toolbar toolbar;
     private NavigationView navigationView;
@@ -72,6 +73,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
 
 
         // レイアウトセット
@@ -103,7 +105,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 // headerView から TextView を取得して username を Intent に入れる
                 View headerView = navigationView.getHeaderView(0);
                 TextView tvUserName = headerView.findViewById(R.id.tvUserName);
-                String username = tvUserName != null ? tvUserName.getText().toString() : "ゲスト";
+                String username = tvUserName != null ? tvUserName.getText().toString() : "username";
 
                 intent.putExtra("username", username);
                 startActivity(intent);
@@ -292,10 +294,101 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onMapReady(GoogleMap map) {
-        googleMap = map;
+
+        googleMap = map; // ← これを最初に置くのが絶対
+
+        // --- タップでメニュー表示 ---
+        googleMap.setOnMapClickListener(latLng -> {
+            new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                    .setTitle("ここで何をする？")
+                    .setItems(new CharSequence[]{"赤ピン", "緑ピン", "ここへ行く", "キャンセル"},
+                            (dialog, which) -> {
+                                switch (which) {
+                                    case 0:
+                                        addPin(latLng, userName, 1);
+                                        break;
+
+                                    case 1:
+                                        addPin(latLng, userName, 2);
+                                        break;
+
+                                    case 2:
+                                        drawRouteShortest(latLng);
+                                        break;
+
+                                    default:
+                                        dialog.dismiss();
+                                }
+                            })
+                    .show();
+        });
+
+        // --- 現在地 ---
         setCurrentLocationMarker();
 
-        // --- Firestoreからpinsを取得してマップにピンを立てる ---
+        // --- Firestore 読み込み ---
+        loadPinsFromFirestore();
+
+        // --- マーカークリックメニュー ---
+        googleMap.setOnMarkerClickListener(marker -> {
+            Object tag = marker.getTag();
+            if (tag != null) {
+                String docId = (String) tag;
+
+                new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                        .setTitle("ピン操作")
+                        .setItems(new CharSequence[]{"ここへ行く", "削除", "キャンセル"},
+                                (dialog, which) -> {
+                                    switch (which) {
+                                        case 0:
+                                            drawRouteShortest(marker.getPosition());
+                                            break;
+
+                                        case 1:
+                                            deletePin(marker, docId);
+                                            break;
+
+                                        default:
+                                            dialog.dismiss();
+                                    }
+                                })
+                        .show();
+            }
+            return true;
+        });
+
+        // --- 権限あるなら位置更新 ---
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            startLocationUpdates();
+        }
+    }
+    private void addPin(LatLng pos, String userName, int type) {
+
+        Map<String, Object> pinData = new HashMap<>();
+        pinData.put("lat_x", pos.latitude);
+        pinData.put("lng_y", pos.longitude);
+        pinData.put("name", userName);
+        pinData.put("type", type);
+
+        db.collection("pins")
+                .add(pinData)
+                .addOnSuccessListener(docRef -> {
+
+                    float color = (type == 1)
+                            ? BitmapDescriptorFactory.HUE_RED
+                            : BitmapDescriptorFactory.HUE_GREEN;
+
+                    Marker marker = googleMap.addMarker(new MarkerOptions()
+                            .position(pos)
+                            .title(type == 1 ? "赤ピン" : "緑ピン")
+                            .icon(BitmapDescriptorFactory.defaultMarker(color))
+                    );
+
+                    if (marker != null) marker.setTag(docRef.getId());
+                });
+    }
+    private void loadPinsFromFirestore() {
         db.collection("pins")
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
@@ -303,130 +396,36 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Double lat = doc.getDouble("lat_x");
                         Double lng = doc.getDouble("lng_y");
                         String name = doc.getString("name");
+                        Long type = doc.getLong("type");
 
                         if (lat != null && lng != null) {
                             LatLng pinPosition = new LatLng(lat, lng);
+
+                            float color;
+                            if (type != null && type == 1) {
+                                color = BitmapDescriptorFactory.HUE_RED;
+                            } else if (type != null && type == 2) {
+                                color = BitmapDescriptorFactory.HUE_GREEN;
+                            } else {
+                                color = BitmapDescriptorFactory.HUE_BLUE;
+                            }
+
                             Marker marker = googleMap.addMarker(new MarkerOptions()
                                     .position(pinPosition)
                                     .title(name != null ? name : "未設定ピン")
-                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                                    .icon(BitmapDescriptorFactory.defaultMarker(color))
                             );
 
                             if (marker != null) {
-                                // Firestore ドキュメントIDをタグにセット
                                 marker.setTag(doc.getId());
                             }
                         }
                     }
-                })
-                .addOnFailureListener(e -> Log.w("FirestorePin", "取得失敗", e));
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
-            startLocationUpdates();
-        }
-
-        // --- 赤ピン / 緑ピン追加ボタン ---
-        ImageButton btnPin = findViewById(R.id.btn_pin);   // 緑ピン
-        ImageButton btnPost = findViewById(R.id.btn_post); // 赤ピン
-
-        NavigationView navigationView = findViewById(R.id.nav_view);
-        View headerView = navigationView.getHeaderView(0);
-        TextView tvUserName = headerView.findViewById(R.id.tvUserName);
-        String userName = tvUserName != null ? tvUserName.getText().toString() : "ゲスト";
-
-        // 🔴 赤ピン
-        btnPost.setOnClickListener(v -> {
-            fusedLocationClient.getLastLocation()
-                    .addOnSuccessListener(location -> {
-                        if (location != null) {
-                            LatLng pos = new LatLng(location.getLatitude(), location.getLongitude());
-
-                            // Firestore 保存
-                            Map<String, Object> pinData = new HashMap<>();
-                            pinData.put("lat_x", pos.latitude);
-                            pinData.put("lng_y", pos.longitude);
-                            pinData.put("name", userName);
-                            pinData.put("type", 1); // 赤ピン
-
-                            db.collection("pins")
-                                    .add(pinData)
-                                    .addOnSuccessListener(docRef -> {
-                                        Log.d(TAG, "赤ピン保存成功: " + docRef.getId());
-
-                                        // マーカー追加 & タグ設定
-                                        Marker marker = googleMap.addMarker(new MarkerOptions()
-                                                .position(pos)
-                                                .title("赤ピン")
-                                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-                                        );
-                                        if (marker != null) marker.setTag(docRef.getId());
-                                    })
-                                    .addOnFailureListener(e -> Log.w(TAG, "赤ピン保存失敗", e));
-                        }
-                    });
-        });
-
-        // 🟢 緑ピン
-        btnPin.setOnClickListener(v -> {
-            fusedLocationClient.getLastLocation()
-                    .addOnSuccessListener(location -> {
-                        if (location != null) {
-                            LatLng pos = new LatLng(location.getLatitude(), location.getLongitude());
-
-                            // Firestore 保存
-                            Map<String, Object> pinData = new HashMap<>();
-                            pinData.put("lat_x", pos.latitude);
-                            pinData.put("lng_y", pos.longitude);
-                            pinData.put("name", userName);
-                            pinData.put("type", 2); // 緑ピン
-
-                            db.collection("pins")
-                                    .add(pinData)
-                                    .addOnSuccessListener(docRef -> {
-                                        Log.d(TAG, "緑ピン保存成功: " + docRef.getId());
-
-                                        // マーカー追加 & タグ設定
-                                        Marker marker = googleMap.addMarker(new MarkerOptions()
-                                                .position(pos)
-                                                .title("緑ピン")
-                                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
-                                        );
-                                        if (marker != null) marker.setTag(docRef.getId());
-                                    })
-                                    .addOnFailureListener(e -> Log.w(TAG, "緑ピン保存失敗", e));
-                        }
-                    });
-        });
-
-        // --- マーカークリックリスナー ---
-        googleMap.setOnMarkerClickListener(marker -> {
-            Object tag = marker.getTag();
-            if (tag != null && tag instanceof String) {
-                String docId = (String) tag;
-
-                new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
-                        .setTitle("ピンをどうしますか？")
-                        .setItems(new CharSequence[]{"ここへ行く", "削除", "キャンセル"}, (dialog, which) -> {
-                            switch (which) {
-                                case 0: // ここへ行く
-                                    LatLng destination = marker.getPosition();
-                                    drawRouteShortest(destination);
-                                    break;
-
-                                case 1: // 削除
-                                    deletePin(marker, docId);
-                                    break;
-
-                                default: // キャンセル
-                                    dialog.dismiss();
-                            }
-                        })
-                        .show();
-            }
-            return true; // InfoWindowは表示しない
-        });
+                });
     }
+
+
+
 
 
 
