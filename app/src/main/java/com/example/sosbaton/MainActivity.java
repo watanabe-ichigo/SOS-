@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.HashMap;
 
 
+
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -43,6 +44,12 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationRequest;
+import android.app.AlertDialog;
+import java.util.List;
+import com.google.android.gms.maps.model.LatLng;
+import com.example.sosbaton.BuildConfig;
+
+
 
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -66,6 +73,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+
+        // レイアウトセット
+        setContentView(R.layout.activity_main);
+
+
+        // --- View取得 ---
+        drawerLayout = findViewById(R.id.drawer_layout);
+        toolbar = findViewById(R.id.toolbar);
+        navigationView = findViewById(R.id.nav_view);
+        mapView = findViewById(R.id.mapView);
+
+
         // EdgeToEdge
         EdgeToEdge.enable(this);
 
@@ -74,8 +93,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         db = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
 
-        // レイアウトセット
-        setContentView(R.layout.activity_main);
+
         //SOSでユーザネームを取得
         ImageButton btn_call = findViewById(R.id.btn_call);
         if (btn_call != null) {
@@ -94,11 +112,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
-        // --- View取得 ---
-        drawerLayout = findViewById(R.id.drawer_layout);
-        toolbar = findViewById(R.id.toolbar);
-        navigationView = findViewById(R.id.nav_view);
-        mapView = findViewById(R.id.mapView);
 
         setSupportActionBar(toolbar);
 
@@ -143,7 +156,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_home) {
-                startActivity(new Intent(MainActivity.this, LoginActivity.class));
+                startActivity(new Intent(MainActivity.this, StartActivity.class));
             } else if (id == R.id.nav_profile) {
                 startActivity(new Intent(MainActivity.this, ProfileActivity.class));
             } else if (id == R.id.nav_settings) {
@@ -169,8 +182,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // --- SOSボタン ---
 
 
-
-
         if (btn_call != null) {
             btn_call.setOnClickListener(v -> {
                 Intent intent = new Intent(MainActivity.this, SosActivity.class);
@@ -192,13 +203,36 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
 
+        //経路選択
+        Button btnEvacuate = findViewById(R.id.btevacuation);
+        //避難所はとりあえず開成山公園に設定
+        LatLng evacuationPoint = new LatLng(37.39830881, 140.35796203);
 
 
+        btnEvacuate.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("ルート選択")
+                        .setMessage("避難方法を選択してください")
+                        .setPositiveButton("危険回避ルート", (dialog, which) -> {
+                            //drawRouteAvoiding(evacuationPoint);
+                        })
+                        .setNegativeButton("安全経由ルート", (dialog, which) -> {
+                            //drawRouteDirect(evacuationPoint);
+                        })
+                        .setNeutralButton("最短ルート", (dialog, which) -> {
+                            drawRouteShortest(evacuationPoint);
+                        })
+                        .show();
+            }
+        });
 
 
-
+        Log.d("TEST", "MAPS=" + BuildConfig.MAPS_API_KEY);
 
     }
+
 
     @Override
     protected void onResume() {
@@ -365,31 +399,46 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     });
         });
 
-        // --- マーカー削除用リスナー ---
+        // --- マーカークリックリスナー ---
         googleMap.setOnMarkerClickListener(marker -> {
             Object tag = marker.getTag();
             if (tag != null && tag instanceof String) {
                 String docId = (String) tag;
 
                 new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
-                        .setTitle("ピン削除")
-                        .setMessage("本当にこのピンを削除しますか？")
-                        .setPositiveButton("削除", (dialog, which) -> {
-                            db.collection("pins").document(docId)
-                                    .delete()
-                                    .addOnSuccessListener(aVoid -> Log.d(TAG, "ピン削除成功: " + docId))
-                                    .addOnFailureListener(e -> Log.w(TAG, "ピン削除失敗", e));
-                            marker.remove();
+                        .setTitle("ピンをどうしますか？")
+                        .setItems(new CharSequence[]{"ここへ行く", "削除", "キャンセル"}, (dialog, which) -> {
+                            switch (which) {
+                                case 0: // ここへ行く
+                                    LatLng destination = marker.getPosition();
+                                    drawRouteShortest(destination);
+                                    break;
+
+                                case 1: // 削除
+                                    deletePin(marker, docId);
+                                    break;
+
+                                default: // キャンセル
+                                    dialog.dismiss();
+                            }
                         })
-                        .setNegativeButton("キャンセル", (dialog, which) -> dialog.dismiss())
                         .show();
             }
             return true; // InfoWindowは表示しない
         });
     }
 
+
+
+
+
+
+
+
+
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult ( int requestCode, String[] permissions,
+                                             int[] grantResults){
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 1) {
             if (grantResults.length > 0
@@ -428,7 +477,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             };
 
     // --- 位置情報追尾開始 ---
-    private void startLocationUpdates() {
+    private void startLocationUpdates () {
         if (ActivityCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
@@ -447,7 +496,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     // --- Firestore にピン保存（赤=1, 緑=2） ---
-    private void savePinToFirestore(double lat, double lng, String userName, int type) {
+    private void savePinToFirestore ( double lat, double lng, String userName,int type){
 
         db.collection("pins")
                 .orderBy("id", com.google.firebase.firestore.Query.Direction.DESCENDING)
@@ -472,6 +521,168 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             .add(pinData)
                             .addOnSuccessListener(docRef -> Log.d("Firestore", "ピン保存成功: " + docRef.getId()))
                             .addOnFailureListener(e -> Log.w("Firestore", "ピン保存失敗", e));
+
                 });
     }
+
+
+
+
+
+
+
+
+    //最短ルートが押された時に呼び出されるルート検索関数
+    private void drawRouteShortest(LatLng destination) {
+
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+
+            // 許可済 → 位置情報取得
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(location -> {
+                        if (location != null) {
+                            LatLng origin = new LatLng(location.getLatitude(), location.getLongitude());
+                            fetchRoute(origin, destination);
+                        }
+                    });
+
+        } else {
+            return;
+        }
+
+    }
+
+    //ルート計算関数(計算自体はGoogleAPIなのでHTTP通信するためのロジック)
+    private void fetchRoute(LatLng origin, LatLng destination) {
+
+//APIへのURL作成
+        String url = "https://maps.googleapis.com/maps/api/directions/json?"
+                + "origin=" + origin.latitude + "," + origin.longitude
+                + "&destination=" + destination.latitude + "," + destination.longitude
+                + "&mode=walking"
+                + "&alternatives=false"
+                + "&key=" + BuildConfig.MAPS_API_KEY; // ← local.properties のキーを参照
+
+
+//メインスレッド（今回はMAP画面)でのHTTP通信はルール上禁止→別スレッド（バックグラウンド）での処理にする）
+        new Thread(() -> {
+            try {
+                java.net.URL reqUrl = new java.net.URL(url);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) reqUrl.openConnection();
+                conn.connect();
+                java.io.InputStreamReader isr = new java.io.InputStreamReader(conn.getInputStream());
+                java.io.BufferedReader reader = new java.io.BufferedReader(isr);
+
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) sb.append(line);
+
+                parseRouteJson(sb.toString());
+            } catch (Exception e) {
+                Log.e("RouteFetch", "ルート取得失敗: ", e);
+            }
+        }).start();//←別スレッドの起動
+
+
+    }
+
+    // ④取得した道案内データを解析＆Polyline 描画関数
+    private void parseRouteJson(String json) {
+        try {
+
+            //返ってきたJSONデータ（string形でこのままでは使えない)を扱えるようオブジェクト化する
+            org.json.JSONObject jsonObject = new org.json.JSONObject(json);
+
+            //JSONデータからroutesを取り出す
+            org.json.JSONArray routes = jsonObject.getJSONArray("routes");
+            if (routes.length() == 0) return;
+
+
+            org.json.JSONObject route = routes.getJSONObject(0);
+            org.json.JSONObject polyline = route.getJSONObject("overview_polyline");
+            String encoded = polyline.getString("points");
+
+
+            List<LatLng> points = decodePolyline(encoded);
+
+
+            //UI操作はメインスレッドの特権（現在は別スレッドなのでメインに戻す)
+            runOnUiThread(() -> {
+
+                //実際のUI操作（経路の表示)
+                googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
+                        .addAll(points)
+                        .width(12)//←線の太さ
+                        .color(android.graphics.Color.BLUE) // 線の色
+                        .geodesic(true)//曲面に沿った自然な線にする
+                );
+            });
+
+        } catch (Exception e) {
+            Log.e("RouteParse", "解析失敗: ", e);
+        }
+    }
+
+
+    // Google Polyline をデコード（圧縮データの解凍)する関数
+    private List<LatLng> decodePolyline(String encoded) {
+
+        List<LatLng> poly = new java.util.ArrayList<>();
+
+
+        int index = 0, len = encoded.length();
+        int lat = 0, lng = 0;
+
+        while (index < len) {
+            int b, shift = 0, result = 0;
+            do {
+                b = encoded.charAt(index++) - 63;
+
+                //5ビットずつ座標データを復元していく
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+
+            //dlat: 変化量（暗号） → 本来の緯度差に戻す.前の値 lat に加算して 絶対値に戻す(緯度計算)
+            int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lat += dlat;
+
+            shift = 0;
+            result = 0;
+            do {
+
+                //同じように経度計算
+                b = encoded.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+
+            poly.add(new LatLng(lat / 1E5, lng / 1E5));
+        }
+
+        return poly;
+    }
+
+
+    //ピンの削除関数
+    private void deletePin (Marker marker, String docId){
+        new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                .setTitle("ピン削除")
+                .setMessage("本当にこのピンを削除しますか？")
+                .setPositiveButton("削除", (dialog, which) -> {
+                    db.collection("pins").document(docId)
+                            .delete()
+                            .addOnSuccessListener(aVoid -> Log.d(TAG, "ピン削除成功: " + docId))
+                            .addOnFailureListener(e -> Log.w(TAG, "ピン削除失敗", e));
+                    marker.remove();  // マップから削除
+                })
+                .setNegativeButton("キャンセル", (dialog, which) -> dialog.dismiss())
+                .show();
+    }
 }
+
+
+

@@ -1,5 +1,10 @@
+
+//経路選択
+import java.util.Properties
 plugins {
-   //alias(libs.plugins.android.application)
+    //alias(libs.plugins.android.application)
+
+
 
     //データベース接続
     id("com.google.gms.google-services")
@@ -7,6 +12,13 @@ plugins {
 }
 
 android {
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+
+
     namespace = "com.example.sosbaton"
     /*compileSdk {
         version = release(34)
@@ -23,6 +35,20 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // 🔐 local.properties から API キーを読み込み
+        val props = Properties()
+        props.load(project.rootDir.resolve("local.properties").inputStream())
+
+        // === Gemini Key 読み込み ===
+        val geminiKey = props.getProperty("GEMINI_API_KEY") ?: ""
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
+
+        // === Google Maps/Directions Key 読み込み ===
+        val mapsKey = props.getProperty("MAPS_API_KEY") ?: ""
+        buildConfigField("String", "MAPS_API_KEY", "\"$mapsKey\"")
+
+
+
     }
 
     buildTypes {
@@ -43,8 +69,8 @@ android {
 dependencies {
     //データベース接続
     //  Firebase Firestore
-   /* implementation(platform("com.google.firebase:firebase-bom:33.1.1"))
-    implementation("com.google.firebase:firebase-firestore")*/
+    /* implementation(platform("com.google.firebase:firebase-bom:33.1.1"))
+     implementation("com.google.firebase:firebase-firestore")*/
     //データベース接続
     implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
     implementation("com.google.firebase:firebase-analytics")
@@ -59,6 +85,10 @@ dependencies {
 
     // 🔽 ここにこれを追加！！
     implementation("com.google.firebase:firebase-auth")
+    //経路選択
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
+    implementation("org.json:json:20210307")
+    implementation("com.google.maps.android:android-maps-utils:2.3.0")
 
 
 
