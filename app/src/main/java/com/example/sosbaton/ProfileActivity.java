@@ -18,6 +18,8 @@ import androidx.appcompat.app.AlertDialog;
 
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.EmailAuthProvider;
+import android.util.Log;
+
 
 
 
@@ -120,7 +122,7 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
-    // ② メール変更ダイアログ（再認証付き）
+    // ② メール変更ダイアログ（再認証 + verifyBeforeUpdateEmail）
     // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
     private void showEditEmailDialog() {
         FirebaseUser user = auth.getCurrentUser();
@@ -136,6 +138,7 @@ public class ProfileActivity extends AppCompatActivity {
         builder.setView(view);
 
         builder.setPositiveButton("変更", (dialog, which) -> {
+
             String currentPassword = etCurrentPassword.getText().toString();
             String newEmail = etNewEmail.getText().toString().trim();
 
@@ -144,25 +147,45 @@ public class ProfileActivity extends AppCompatActivity {
                 return;
             }
 
+            // 🔐 再認証
             AuthCredential credential = EmailAuthProvider
                     .getCredential(user.getEmail(), currentPassword);
 
-            // 🔐 再認証
-            user.reauthenticate(credential).addOnSuccessListener(aVoid -> {
-                user.updateEmail(newEmail)
-                        .addOnSuccessListener(v -> {
-                            tvValueEmail.setText(newEmail);
-                            Toast.makeText(this, "メールを変更しました", Toast.LENGTH_SHORT).show();
-                        })
-                        .addOnFailureListener(e ->
-                                Toast.makeText(this, "変更失敗: " + e.getMessage(), Toast.LENGTH_SHORT).show());
-            }).addOnFailureListener(e ->
-                    Toast.makeText(this, "パスワードが違います", Toast.LENGTH_SHORT).show());
+            user.reauthenticate(credential)
+                    .addOnSuccessListener(aVoid -> {
+
+                        // ★ Firebase 正攻法：まず確認メールを送らせる
+                        user.verifyBeforeUpdateEmail(newEmail)
+                                .addOnSuccessListener(v -> {
+
+                                    // UI 上はとりあえず新しいメール表示だけ更新しておく
+                                    tvValueEmail.setText(newEmail);
+
+                                    Toast.makeText(this,
+                                            "新しいメールに確認リンク送ったのだ。"
+                                                    + "リンク踏んだらメール変更が確定するのだぞ！",
+                                            Toast.LENGTH_LONG).show();
+
+                                })
+                                .addOnFailureListener(e -> {
+                                    Log.e("EMAIL_UPDATE", "verifyBeforeUpdateEmail失敗", e);
+                                    Toast.makeText(this,
+                                            "メール送信失敗: " + e.getMessage(),
+                                            Toast.LENGTH_LONG).show();
+                                });
+
+                    })
+                    .addOnFailureListener(e -> {
+                        Toast.makeText(this, "パスワードが違います", Toast.LENGTH_SHORT).show();
+                    });
         });
 
         builder.setNegativeButton("キャンセル", (d, w) -> d.cancel());
         builder.show();
     }
+
+
+
 
     // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
     // ③ パスワード変更ダイアログ（再認証付き）
