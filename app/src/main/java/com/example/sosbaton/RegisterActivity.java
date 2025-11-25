@@ -1,5 +1,6 @@
 package com.example.sosbaton;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.method.HideReturnsTransformationMethod;
 import android.text.method.PasswordTransformationMethod;
@@ -37,6 +38,13 @@ public class RegisterActivity extends AppCompatActivity {
         ImageButton btnTogglePassword = findViewById(R.id.btnTogglePassword);
         ImageButton btnToggleConfirm = findViewById(R.id.btnToggleConfirm);
         Button btnRegister = findViewById(R.id.btnRegister);
+        Button btnback = findViewById(R.id.btback);
+
+        //戻るボタン処理
+        btnback.setOnClickListener(v -> {
+            Intent intent = new Intent(RegisterActivity.this,StartActivity.class);
+            startActivity(intent);
+        });
 
         // パスワード表示切替
         btnTogglePassword.setOnClickListener(v -> {
