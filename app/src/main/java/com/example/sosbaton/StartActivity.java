@@ -2,8 +2,11 @@ package com.example.sosbaton;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.method.HideReturnsTransformationMethod;
+import android.text.method.PasswordTransformationMethod;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -21,12 +24,24 @@ public class StartActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_start);
+        EditText etPassword = findViewById(R.id.etPassword);
+        ImageButton btnTogglePassword = findViewById(R.id.btnTogglePassword);
+
+
+        // パスワード表示切替
+        btnTogglePassword.setOnClickListener(v -> {
+            if (etPassword.getTransformationMethod() instanceof PasswordTransformationMethod) {
+                etPassword.setTransformationMethod(HideReturnsTransformationMethod.getInstance());
+            } else {
+                etPassword.setTransformationMethod(PasswordTransformationMethod.getInstance());
+            }
+            etPassword.setSelection(etPassword.getText().length());
+        });
 
         auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
 
         EditText etEmail = findViewById(R.id.etEmail);
-        EditText etPassword = findViewById(R.id.etPassword); // ← パスワード欄追加してね！
         Button btnLogin = findViewById(R.id.btnLogin);
         Button btnRegister = findViewById(R.id.btnRegister);
 
