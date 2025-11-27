@@ -13,10 +13,10 @@
         android:layout_width="0dp"
         android:layout_height="?attr/actionBarSize"
         android:layout_marginTop="36dp"
-        android:background="#E91E63"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        android:background="#F66B6B"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
         app:titleTextColor="@android:color/white" />
 
     <!-- タイトル -->
@@ -185,6 +185,7 @@
         android:layout_margin="16dp"
         android:background="@android:color/transparent"
         android:src="@drawable/baseline_arrow_back_ios_new_24"
+        app:tint="@android:color/white"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
