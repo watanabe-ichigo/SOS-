@@ -46,14 +46,18 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationRequest;
 import android.app.AlertDialog;
 import java.util.List;
+import java.util.ArrayList;
 import com.google.android.gms.maps.model.LatLng;
 import com.example.sosbaton.BuildConfig;
+import android.location.Location;
 
 
 
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
+
+    private String userName = "ゲスト";
     private DrawerLayout drawerLayout;
     private Toolbar toolbar;
     private NavigationView navigationView;
@@ -62,6 +66,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private GoogleMap googleMap;
     private FusedLocationProviderClient fusedLocationClient;
+    private List<Marker> allMarkers = new ArrayList<>();
 
     private Marker myMarker;
 //    private LocationCallback locationCallback;
@@ -69,9 +74,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FirebaseFirestore db;
     private FirebaseAuth auth;
 
+
+
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
 
 
         // レイアウトセット
@@ -103,7 +113,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 // headerView から TextView を取得して username を Intent に入れる
                 View headerView = navigationView.getHeaderView(0);
                 TextView tvUserName = headerView.findViewById(R.id.tvUserName);
-                String username = tvUserName != null ? tvUserName.getText().toString() : "ゲスト";
+                String username = tvUserName != null ? tvUserName.getText().toString() : "username";
 
                 intent.putExtra("username", username);
                 startActivity(intent);
@@ -216,7 +226,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         .setTitle("ルート選択")
                         .setMessage("避難方法を選択してください")
                         .setPositiveButton("危険回避ルート", (dialog, which) -> {
-                            //drawRouteAvoiding(evacuationPoint);
+                            drawRouteAvoiding(evacuationPoint);
                         })
                         .setNegativeButton("安全経由ルート", (dialog, which) -> {
                             //drawRouteDirect(evacuationPoint);
@@ -292,18 +302,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onMapReady(GoogleMap map) {
-        googleMap = map;
 
-        // userName取得
-        View headerView = navigationView.getHeaderView(0);
-        TextView tvUserName = headerView.findViewById(R.id.tvUserName);
-        String userName = tvUserName != null ? tvUserName.getText().toString() : "ゲスト";
+        googleMap = map; // ← これを最初に置くのが絶対
 
-        //------------------------------------------------------------
-        // ① マップタップでメニュー
-        //------------------------------------------------------------
+        // --- タップでメニュー表示 ---
         googleMap.setOnMapClickListener(latLng -> {
-            new AlertDialog.Builder(MainActivity.this)
+            new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
                     .setTitle("ここで何をする？")
                     .setItems(new CharSequence[]{"赤ピン", "緑ピン", "ここへ行く", "キャンセル"},
                             (dialog, which) -> {
@@ -311,36 +315,48 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     case 0:
                                         addPin(latLng, userName, 1);
                                         break;
+
                                     case 1:
                                         addPin(latLng, userName, 2);
                                         break;
+
                                     case 2:
                                         drawRouteShortest(latLng);
                                         break;
+
+                                    default:
+                                        dialog.dismiss();
                                 }
                             })
                     .show();
         });
 
-        //------------------------------------------------------------
-        // ② 現在地ピン
-        //------------------------------------------------------------
+        // --- 現在地 ---
         setCurrentLocationMarker();
 
-        //------------------------------------------------------------
-        // ③ Firestore ピン読込
-        //------------------------------------------------------------
+        // --- Firestore 読み込み ---
         loadPinsFromFirestore();
 
-        //------------------------------------------------------------
-        // ④ マーカークリック（ここへ行く・削除）
-        //------------------------------------------------------------
+        // --- マーカークリックメニュー ---
         googleMap.setOnMarkerClickListener(marker -> {
             Object tag = marker.getTag();
-            if (tag != null) {
-                String docId = (String) tag;
+            String docId = null; // ドキュメントIDを格納する変数なのだ
 
-                new AlertDialog.Builder(MainActivity.this)
+            if (tag instanceof Map) {
+                // Tag が Map の場合は、そこから docId を取り出すのだ
+                Map<String, Object> tagData = (Map<String, Object>) tag;
+                docId = (String) tagData.get("docId");
+
+            } else if (tag instanceof String) {
+                // Tag が String の場合は、それが docId だと見なすのだ（古いコードの名残かもしれないが）
+                docId = (String) tag;
+
+            }
+
+            if (docId != null) { // docId が取得できたら処理を続けるのだ！
+
+                String finalDocId = docId; // ラムダ式内で使うために final 化するのだ
+                new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
                         .setTitle("ピン操作")
                         .setItems(new CharSequence[]{"ここへ行く", "削除", "キャンセル"},
                                 (dialog, which) -> {
@@ -348,55 +364,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         case 0:
                                             drawRouteShortest(marker.getPosition());
                                             break;
+
                                         case 1:
-                                            deletePin(marker, docId);
+                                            // 削除関数も docId を受け取るように修正が必要かもしれないのだ
+                                            deletePin(marker, finalDocId);
                                             break;
+
+                                        default:
+                                            dialog.dismiss();
                                     }
                                 })
                         .show();
             }
+            // ここで return true; を忘れるな！
             return true;
         });
 
-        //------------------------------------------------------------
-        // ⑤ 現在地追尾
-        //------------------------------------------------------------
+        // --- 権限あるなら位置更新 ---
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
             startLocationUpdates();
         }
     }
-
-
-    // ---------------------------
-    // 現在地ピン
-    // ---------------------------
-//    private void setCurrentLocationMarker() {
-//        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-//                != PackageManager.PERMISSION_GRANTED) {
-//            ActivityCompat.requestPermissions(this,
-//                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-//            return;
-//        }
-//
-//        googleMap.setMyLocationEnabled(true);
-//
-//        fusedLocationClient.getLastLocation()
-//                .addOnSuccessListener(location -> {
-//                    if (location != null) {
-//                        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-//                        googleMap.addMarker(
-//                                new MarkerOptions().position(latLng).title("現在地")
-//                        );
-//                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15));
-//                    }
-//                });
-//    }
-
-
-    // ---------------------------
-    // Firestore ピン保存（赤1 / 緑2）
-    // ---------------------------
     private void addPin(LatLng pos, String userName, int type) {
 
         Map<String, Object> pinData = new HashMap<>();
@@ -418,88 +407,62 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             .title(type == 1 ? "赤ピン" : "緑ピン")
                             .icon(BitmapDescriptorFactory.defaultMarker(color))
                     );
+                    allMarkers.add(marker);
 
-                    if (marker != null) marker.setTag(docRef.getId());
+
+                    if (marker != null) {
+                        // 修正点：TagにDocument IDと type を持つ HashMap を設定するのだ！
+                        Map<String, Object> tagData = new HashMap<>();
+                        tagData.put("docId", docRef.getId());
+                        tagData.put("type", (long)type); // long型にキャストして合わせるのだ
+
+                        marker.setTag(tagData);
+                    }
                 });
     }
-
-
-    // ---------------------------
-    // Firestore ピン読込
-    // ---------------------------
     private void loadPinsFromFirestore() {
         db.collection("pins")
                 .get()
-                .addOnSuccessListener(query -> {
-                    for (DocumentSnapshot doc : query) {
-
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    for (DocumentSnapshot doc : queryDocumentSnapshots) {
                         Double lat = doc.getDouble("lat_x");
                         Double lng = doc.getDouble("lng_y");
                         String name = doc.getString("name");
                         Long type = doc.getLong("type");
 
-                        if (lat == null || lng == null) continue;
+                        if (lat != null && lng != null) {
+                            LatLng pinPosition = new LatLng(lat, lng);
 
-                        LatLng pos = new LatLng(lat, lng);
+                            float color;
+                            if (type != null && type == 1) {
+                                color = BitmapDescriptorFactory.HUE_RED;
+                            } else if (type != null && type == 2) {
+                                color = BitmapDescriptorFactory.HUE_GREEN;
+                            } else {
+                                color = BitmapDescriptorFactory.HUE_BLUE;
+                            }
 
-                        float color;
-                        if (type != null && type == 1) color = BitmapDescriptorFactory.HUE_RED;
-                        else if (type != null && type == 2) color = BitmapDescriptorFactory.HUE_GREEN;
-                        else color = BitmapDescriptorFactory.HUE_BLUE;
+                            Marker marker = googleMap.addMarker(new MarkerOptions()
+                                    .position(pinPosition)
+                                    .title(name != null ? name : "未設定ピン")
+                                    .icon(BitmapDescriptorFactory.defaultMarker(color))
+                            );
 
-                        Marker marker = googleMap.addMarker(new MarkerOptions()
-                                .position(pos)
-                                .title(name != null ? name : "未設定ピン")
-                                .icon(BitmapDescriptorFactory.defaultMarker(color))
-                        );
+                            if (marker != null) {
+                                Map<String, Object> tagData = new HashMap<>();
+                                tagData.put("docId", doc.getId());
+                                tagData.put("type", type); // ← これが重要！
 
-                        if (marker != null) marker.setTag(doc.getId());
+                                marker.setTag(tagData);
+                                allMarkers.add(marker);
+                            }
+                        }
                     }
                 });
     }
 
 
-    // ---------------------------
-    // ピン削除
-    // ---------------------------
-//    private void deletePin(Marker marker, String docId) {
-//        new AlertDialog.Builder(MainActivity.this)
-//                .setTitle("削除確認")
-//                .setMessage("このピンを削除しますか？")
-//                .setPositiveButton("削除", (d, w) -> {
-//                    db.collection("pins").document(docId)
-//                            .delete()
-//                            .addOnSuccessListener(x -> marker.remove());
-//                })
-//                .setNegativeButton("キャンセル", null)
-//                .show();
-//    }
 
-
-    // ---------------------------
-    // 現在地追尾
-    // ---------------------------
-//    private LocationCallback locationCallback = new LocationCallback() {
-//        @Override
-//        public void onLocationResult(LocationResult result) {
-//            if (result == null) return;
-//
-//            LatLng current = new LatLng(
-//                    result.getLastLocation().getLatitude(),
-//                    result.getLastLocation().getLongitude()
-//            );
-//
-//            if (myMarker == null) {
-//                myMarker = googleMap.addMarker(new MarkerOptions()
-//                        .position(current)
-//                        .title("現在地（追尾）")
-//                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-//                );
-//            } else {
-//                myMarker.setPosition(current);
-//            }
-//        }
-//    };
 
 
 
@@ -626,6 +589,205 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
+    //危険回避ルートが押された時に呼び出されるルート検索関数達
+    // --- helper: メートル単位で緯度経度をオフセットする ---
+    private LatLng offsetLatLng(LatLng origin, double eastMeters, double northMeters) {
+        // 地球半径 (m)
+        double R = 6378137;
+        double dLat = northMeters / R;
+        double dLon = eastMeters / (R * Math.cos(Math.toRadians(origin.latitude)));
+        double newLat = origin.latitude + Math.toDegrees(dLat);
+        double newLon = origin.longitude + Math.toDegrees(dLon);
+        return new LatLng(newLat, newLon);
+    }
+
+    // --- 追加 helper: danger の周囲に等間隔に候補点を作る ---
+    private List<LatLng> generateCircularCandidates(LatLng center, double radiusMeters, int count) {
+        List<LatLng> out = new ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            double angle = 2 * Math.PI * i / count;
+            double dx = Math.cos(angle) * radiusMeters; // 東方向成分（m）
+            double dy = Math.sin(angle) * radiusMeters; // 北方向成分（m）
+            out.add(offsetLatLng(center, dx, dy));
+        }
+        return out;
+    }
+
+    // --- 新しい fetch: 候補点を作って順に試す ---
+
+
+    // --- まず直通ルートを試して、安全なら描画。ダメなら候補を順に試す ---
+    private void tryRouteDirectThenCandidates(LatLng origin, LatLng destination,
+                                              List<LatLng> waypointCandidates,
+                                              int maxTrials,
+                                              List<LatLng> dangerPins) {
+
+        // 直通ルートを取得
+        new Thread(() -> {
+            try {
+                String urlDirect = "https://maps.googleapis.com/maps/api/directions/json?"
+                        + "origin=" + origin.latitude + "," + origin.longitude
+                        + "&destination=" + destination.latitude + "," + destination.longitude
+                        + "&mode=walking"
+                        + "&alternatives=false"
+                        + "&key=" + BuildConfig.MAPS_API_KEY;
+
+                org.json.JSONObject jsonObj = requestJson(urlDirect);
+                if (jsonObj != null) {
+                    org.json.JSONArray routes = jsonObj.getJSONArray("routes");
+                    if (routes.length() > 0) {
+                        String encoded = routes.getJSONObject(0)
+                                .getJSONObject("overview_polyline").getString("points");
+                        List<LatLng> points = decodePolyline(encoded);
+                        if (!passesThroughDanger(points, dangerPins, 50)) {
+                            // 安全なら直ちに描画して終了
+                            runOnUiThread(() -> {
+                                googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
+                                        .addAll(points).width(12).color(android.graphics.Color.MAGENTA).geodesic(true));
+                            });
+                            return;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.e("RouteAvoid", "直通ルート確認で例外: ", e);
+            }
+
+            // 直通がダメなら候補を順に試す
+            // 並列で投げるとAPI制限に引っかかるかもしれないから順次同期的に試す
+            int tried = 0;
+            for (LatLng wp : waypointCandidates) {
+                if (tried >= maxTrials) break;
+                tried++;
+
+                try {
+                    // via: を使うことで必ずその地点を経由させる（経路を強制的に迂回させられる）
+                    String waypointParam = "via:" + wp.latitude + "," + wp.longitude;
+                    String url = "https://maps.googleapis.com/maps/api/directions/json?"
+                            + "origin=" + origin.latitude + "," + origin.longitude
+                            + "&destination=" + destination.latitude + "," + destination.longitude
+                            + "&waypoints=" + java.net.URLEncoder.encode(waypointParam, "UTF-8")
+                            + "&mode=walking"
+                            + "&alternatives=false"
+                            + "&key=" + BuildConfig.MAPS_API_KEY;
+
+                    org.json.JSONObject jsonObj = requestJson(url);
+                    if (jsonObj == null) continue;
+
+                    org.json.JSONArray routes = jsonObj.getJSONArray("routes");
+                    if (routes.length() == 0) continue;
+
+                    String encoded = routes.getJSONObject(0)
+                            .getJSONObject("overview_polyline").getString("points");
+                    List<LatLng> points = decodePolyline(encoded);
+
+                    // 返ってきたルートが危険ピンと被らなければ採用して終了
+                    if (!passesThroughDanger(points, dangerPins, 50)) {
+                        runOnUiThread(() -> {
+                            googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
+                                    .addAll(points).width(12).color(android.graphics.Color.MAGENTA).geodesic(true));
+                        });
+                        return;
+                    }
+
+                } catch (Exception e) {
+                    Log.e("RouteAvoid", "候補試行で例外: ", e);
+                }
+            }
+
+            // 全部ダメだったら UI に失敗表示
+            runOnUiThread(() -> {
+                Log.w("RouteAvoid", "安全に通れるルートが見つかりませんでした（候補全滅）");
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("危険回避ルートが見つかりません")
+                        .setMessage("候補を試したが、危険ピンを回避できるルートが見つかりませんでした。")
+                        .setPositiveButton("OK", null)
+                        .show();
+            });
+
+        }).start();
+    }
+
+    // --- 単純な HTTP GET をして JSON を返すユーティリティ ---
+    private org.json.JSONObject requestJson(String urlStr) {
+        try {
+            java.net.URL reqUrl = new java.net.URL(urlStr);
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) reqUrl.openConnection();
+            conn.connect();
+            java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line);
+            return new org.json.JSONObject(sb.toString());
+        } catch (Exception e) {
+            Log.e("RouteAvoid", "requestJson失敗: ", e);
+            return null;
+        }
+    }
+    private void drawRouteAvoiding(LatLng destination) {
+
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) return;
+
+        // 【⭐ 危険ピン（赤ピン）を先に取得しておくのだ！ ⭐】
+        List<LatLng> dangerPins = new java.util.ArrayList<>();
+        // UIスレッドで実行する必要がある処理だから runOnUiThread で囲むのだ
+        runOnUiThread(() -> {
+            for (Marker m : allMarkers) {
+                Object tag = m.getTag();
+                if (tag instanceof Map) {
+                    Map<String, Object> tagData = (Map<String, Object>) tag;
+                    Long type = (Long) tagData.get("type");
+                    if (type != null && type == 1) { // type が 1（赤ピン）であれば危険ピン
+                        dangerPins.add(m.getPosition());
+                    }
+                }
+            }
+        });
+
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(location -> {
+                    if (location != null) {
+                        LatLng origin = new LatLng(location.getLatitude(), location.getLongitude());
+
+                        // 【⭐ 修正点：危険ピンの周囲に候補点を生成し、それを試すロジックを呼び出すのだ！ ⭐】
+                        List<LatLng> allCandidates = new ArrayList<>();
+                        double candidateRadius = 300; // 危険ピンから300m離れた円周上に候補を作る
+                        int candidateCount = 12; // 12方向に候補を作る
+
+                        // 全ての危険ピンの周囲に候補点を生成してリストに集めるのだ
+                        for (LatLng dangerCenter : dangerPins) {
+                            allCandidates.addAll(generateCircularCandidates(dangerCenter, candidateRadius, candidateCount));
+                        }
+                        // 直通がダメなら、この候補リストを順番に経由地として試すのだ！
+                        tryRouteDirectThenCandidates(origin, destination, allCandidates, 30, dangerPins); // 最大30個の候補を試す
+                    }
+                });
+    }
+
+
+    private boolean passesThroughDanger(List<LatLng> routePoints,
+                                        List<LatLng> dangerPins,
+                                        double radiusMeters) {
+
+        float[] results = new float[1];
+
+        for (LatLng p : routePoints) {
+            for (LatLng d : dangerPins) {
+                Location.distanceBetween(
+                        p.latitude, p.longitude,
+                        d.latitude, d.longitude,
+                        results
+                );
+                if (results[0] < radiusMeters) {
+                    return true; // 危険エリアを通過
+                }
+            }
+        }
+        return false;
+    }
+
+
     //ルート計算関数(計算自体はGoogleAPIなのでHTTP通信するためのロジック)
     private void fetchRoute(LatLng origin, LatLng destination) {
 
@@ -634,7 +796,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 + "origin=" + origin.latitude + "," + origin.longitude
                 + "&destination=" + destination.latitude + "," + destination.longitude
                 + "&mode=walking"
-                + "&alternatives=true"
+                + "&alternatives=false"
                 + "&key=" + BuildConfig.MAPS_API_KEY; // ← local.properties のキーを参照
 
 
