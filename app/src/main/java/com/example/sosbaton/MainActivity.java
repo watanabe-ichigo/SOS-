@@ -79,6 +79,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FirebaseAuth auth;
 
     private FirebaseUser currentUser;
+    private int successfulRouteCount = 0;  // 成功したルート数
+    private int totalEvacuationPoints = 0; // 避難所の総数
+    private int finishedRouteCount = 0; // 新規：避難所ごとのルート探索完了数
+    private final Object routeLock = new Object(); // スレッド安全のため
 
 
 
@@ -294,6 +298,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         evacuationPoints.add(new LatLng(37.36942367, 140.37393403)); // ビッグパレット
                         evacuationPoints.add(new LatLng(37.419631, 140.390504));     // 富久山公民館
 
+                        totalEvacuationPoints = evacuationPoints.size();
+                        successfulRouteCount = 0; // リセット
                         // 各避難所へのルート描画
                         for (LatLng dest : evacuationPoints) {
                             drawRouteAvoiding(dest);
@@ -311,44 +317,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     })
                     .show();
         });
-
-        //経路選択
-//        Button btnEvacuate = findViewById(R.id.btevacuation);
-//        //避難所はとりあえず開成山公園に設定
-//        LatLng evacuationPoint = new LatLng(37.39830881, 140.35796203);
-//        LatLng evacuationPoint1 = new LatLng(37.401941, 140.403995);
-//        LatLng evacuationPoint2 = new LatLng(37.391966, 140.359566);
-//        LatLng evacuationPoint3 = new LatLng(37.420320, 140.374980);
-
-
-//        btnEvacuate.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                new AlertDialog.Builder(MainActivity.this)
-//                        .setTitle("ルート選択")
-//                        .setMessage("避難方法を選択してください")
-//                        .setPositiveButton("危険回避ルート", (dialog, which) -> {
-//                            drawRouteAvoiding(evacuationPoint);
-//                            drawRouteAvoiding(evacuationPoint1);
-//                            drawRouteAvoiding(evacuationPoint2);
-//                            drawRouteAvoiding(evacuationPoint3);
-//                        })
-//                        .setNegativeButton("安全経由ルート", (dialog, which) -> {
-//                            //drawRouteDirect(evacuationPoint);
-//                        })
-//                        .setNeutralButton("最短ルート", (dialog, which) -> {
-//                            drawRouteShortest(evacuationPoint);
-//                           drawRouteAvoiding(evacuationPoint1);
-//                            drawRouteAvoiding(evacuationPoint2);
-//                            drawRouteAvoiding(evacuationPoint3);
-//                        })
-//                        .show();
-//            }
-//        });
-
-
-//        Log.d("TEST", "MAPS=" + BuildConfig.MAPS_API_KEY);
-//
     }
 
     // ----------------------------------------------------------------------
@@ -638,17 +606,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 });
     }
 
-
-
-
-
-
-
-
-
-
-
-
     @Override
     public void onRequestPermissionsResult ( int requestCode, String[] permissions,
                                              int[] grantResults){
@@ -737,13 +694,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 });
     }
-
-
-
-
-
-
-
 
     //最短ルートが押された時に呼び出されるルート検索関数
     private void drawRouteShortest(LatLng destination) {
@@ -872,15 +822,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
             }
 
-            // 全部ダメだったら UI に失敗表示
+            /// 全部ダメだったら UI に失敗表示
+            // 最後にすべてダメだった場合
             runOnUiThread(() -> {
-                Log.w("RouteAvoid", "安全に通れるルートが見つかりませんでした（候補全滅）");
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("危険回避ルートが見つかりません")
-                        .setMessage("候補を試したが、危険ピンを回避できるルートが見つかりませんでした。")
-                        .setPositiveButton("OK", null)
-                        .show();
+                synchronized (routeLock) {
+                    finishedRouteCount++; // この避難所のルート探索完了
+
+                    // すべての避難所探索が終わったか確認
+                    if (finishedRouteCount == totalEvacuationPoints) {
+                        if (successfulRouteCount == 0) {
+                            new AlertDialog.Builder(MainActivity.this)
+                                    .setTitle("危険回避ルートが見つかりません")
+                                    .setMessage("すべての避難所へのルートが危険ピンで回避できませんでした。")
+                                    .setPositiveButton("OK", null)
+                                    .show();
+                        }
+                        // リセットもここでOK
+                        finishedRouteCount = 0;
+                    }
+                }
             });
+
 
         }).start();
     }
@@ -945,47 +907,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
                 });
     }
-//    private void drawRouteAvoiding(LatLng destination) {
-//
-//        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-//                != PackageManager.PERMISSION_GRANTED) return;
-//
-//        // 【⭐ 危険ピン（赤ピン）を先に取得しておくのだ！ ⭐】
-//        List<LatLng> dangerPins = new java.util.ArrayList<>();
-//        // UIスレッドで実行する必要がある処理だから runOnUiThread で囲むのだ
-//        runOnUiThread(() -> {
-//            for (Marker m : allMarkers) {
-//                Object tag = m.getTag();
-//                if (tag instanceof Map) {
-//                    Map<String, Object> tagData = (Map<String, Object>) tag;
-//                    Long type = (Long) tagData.get("type");
-//                    if (type != null && type == 1) { // type が 1（赤ピン）であれば危険ピン
-//                        dangerPins.add(m.getPosition());
-//                    }
-//                }
-//            }
-//        });
-//
-//        fusedLocationClient.getLastLocation()
-//                .addOnSuccessListener(location -> {
-//                    if (location != null) {
-//                        LatLng origin = new LatLng(location.getLatitude(), location.getLongitude());
-//
-//                        // 【⭐ 修正点：危険ピンの周囲に候補点を生成し、それを試すロジックを呼び出すのだ！ ⭐】
-//                        List<LatLng> allCandidates = new ArrayList<>();
-//                        double candidateRadius = 300; // 危険ピンから300m離れた円周上に候補を作る
-//                        int candidateCount = 12; // 12方向に候補を作る
-//
-//                        // 全ての危険ピンの周囲に候補点を生成してリストに集めるのだ
-//                        for (LatLng dangerCenter : dangerPins) {
-//                            allCandidates.addAll(generateCircularCandidates(dangerCenter, candidateRadius, candidateCount));
-//                        }
-//                        // 直通がダメなら、この候補リストを順番に経由地として試すのだ！
-//                        tryRouteDirectThenCandidates(origin, destination, allCandidates, 30, dangerPins); // 最大30個の候補を試す
-//                    }
-//                });
-//    }
-
 
     private boolean passesThroughDanger(List<LatLng> routePoints,
                                         List<LatLng> dangerPins,
