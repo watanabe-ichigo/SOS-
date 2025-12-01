@@ -26,6 +26,12 @@ public class StartActivity extends AppCompatActivity {
         setContentView(R.layout.activity_start);
         EditText etPassword = findViewById(R.id.etPassword);
         ImageButton btnTogglePassword = findViewById(R.id.btnTogglePassword);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            // 現在のフラグを取得し、LIGHT_STATUS_BAR フラグを追加するのだ
+            int flags = getWindow().getDecorView().getSystemUiVisibility();
+            flags |= android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            getWindow().getDecorView().setSystemUiVisibility(flags);
+        }
 
 
         // パスワード表示切替
@@ -44,6 +50,12 @@ public class StartActivity extends AppCompatActivity {
         EditText etEmail = findViewById(R.id.etEmail);
         Button btnLogin = findViewById(R.id.btnLogin);
         Button btnRegister = findViewById(R.id.btnRegister);
+        ImageButton backButton = findViewById(R.id.backButton);
+
+        //戻るボタン処理
+        backButton.setOnClickListener(v -> {
+            finish();
+        });
 
         btnLogin.setOnClickListener(v -> {
 

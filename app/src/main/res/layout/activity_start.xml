@@ -4,7 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FFF7F7">
+    android:background="#FFF7F7"
+    android:fitsSystemWindows="true">
 
     <ImageButton
         android:id="@+id/btnTogglePassword"
@@ -16,6 +17,20 @@
         app:layout_constraintBottom_toBottomOf="@id/etPassword"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/etPassword" />
+
+    <ImageButton
+        android:id="@+id/backButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:padding="8dp"
+        android:background="@android:color/transparent"
+        android:src="@drawable/baseline_arrow_back_ios_new_24"
+        android:contentDescription="戻る"
+        app:tint="@android:color/black"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/textView6"

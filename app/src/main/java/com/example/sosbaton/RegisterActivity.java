@@ -38,12 +38,18 @@ public class RegisterActivity extends AppCompatActivity {
         ImageButton btnTogglePassword = findViewById(R.id.btnTogglePassword);
         ImageButton btnToggleConfirm = findViewById(R.id.btnToggleConfirm);
         Button btnRegister = findViewById(R.id.btnRegister);
-        Button btnback = findViewById(R.id.btback);
+        ImageButton backButton = findViewById(R.id.backButton);
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            // 現在のフラグを取得し、LIGHT_STATUS_BAR フラグを追加するのだ
+            int flags = getWindow().getDecorView().getSystemUiVisibility();
+            flags |= android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            getWindow().getDecorView().setSystemUiVisibility(flags);
+        }
 
         //戻るボタン処理
-        btnback.setOnClickListener(v -> {
-            Intent intent = new Intent(RegisterActivity.this,StartActivity.class);
-            startActivity(intent);
+        backButton.setOnClickListener(v -> {
+            finish();
         });
 
         // パスワード表示切替
