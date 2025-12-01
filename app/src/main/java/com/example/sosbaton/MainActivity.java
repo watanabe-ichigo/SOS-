@@ -120,6 +120,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             // 現在のユーザー名（displayName）をチェックするのだ！
             String displayName = currentUser.getDisplayName();
+            userName = displayName;
 
             if (displayName != null && !displayName.isEmpty()) {
                 // ① displayNameが既に設定されている場合なのだ！
@@ -141,6 +142,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                             if (registeredUsername != null) {
                                 // usernameがデータベースにあった場合なのだ！
+                                userName = registeredUsername;
 
                                 // FirebaseのdisplayNameも更新して、次回以降はすぐに取得できるようにするのだ！
                                 updateFirebaseDisplayName(currentUser, registeredUsername);
@@ -362,10 +364,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     if (task.isSuccessful()) {
                         Log.d("Profile", "displayNameをusernameに更新完了なのだ！");
 
+                        userName = newDisplayName;
+
                         // 更新完了後、ユーザー名でToast表示するのだ！
                         Toast.makeText(this, "ようこそ、" + newDisplayName + "なのだ！", Toast.LENGTH_LONG).show();
                     } else {
                         Log.w("Profile", "更新失敗なのだ。", task.getException());
+
+                        userName = newDisplayName;
+
                         // 失敗した場合も、取得したusernameでとりあえずToast表示するのも手なのだ。
                         Toast.makeText(this, "ようこそ、" + newDisplayName + "なのだ！", Toast.LENGTH_LONG).show();
                     }
