@@ -69,6 +69,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private GoogleMap googleMap;
     private FusedLocationProviderClient fusedLocationClient;
+    private List<LatLng> evacuationPoints = new ArrayList<>();
     private List<Marker> allMarkers = new ArrayList<>();
 
     private Marker myMarker;
@@ -82,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private int successfulRouteCount = 0;  // 成功したルート数
     private int totalEvacuationPoints = 0; // 避難所の総数
     private int finishedRouteCount = 0; // 新規：避難所ごとのルート探索完了数
+    private boolean isEvacuationRouteRequested = false;
     private final Object routeLock = new Object(); // スレッド安全のため
 
 
@@ -256,11 +258,34 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (mapView != null) {
             mapView.onCreate(savedInstanceState);
             mapView.getMapAsync(this);
+            loadEvacuationPointsFromDB();
+            // ここに btnEvacuate の設定を追加
+            Button btnEvacuate = findViewById(R.id.btevacuation);
+
+            btnEvacuate.setOnClickListener(v -> {
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("ルート選択")
+                        .setMessage("避難方法を選択してください")
+                        .setPositiveButton("危険回避ルート", (dialog, which) -> {
+                            isEvacuationRouteRequested = true;
+                            loadEvacuationPointsFromDB();
+                            successfulRouteCount = 0;
+                            finishedRouteCount = 0;
+                        })
+                        .setNegativeButton("安全経由ルート", (dialog, which) -> {
+                            // 安全ルート処理
+                        })
+                        .setNeutralButton("最短ルート", (dialog, which) -> {
+                            drawRouteShortest(new LatLng(37.39830881, 140.35796203));
+                            drawRouteShortest(new LatLng(37.376782, 140.392777));
+                            drawRouteShortest(new LatLng(37.36942367, 140.37393403));
+                            drawRouteShortest(new LatLng(37.419631, 140.390504));
+                        })
+                        .show();
+            });
         }
 
         // --- SOSボタン ---
-
-
         if (btn_call != null) {
             btn_call.setOnClickListener(v -> {
                 Intent intent = new Intent(MainActivity.this, SosActivity.class);
@@ -291,12 +316,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .setMessage("避難方法を選択してください")
                     .setPositiveButton("危険回避ルート", (dialog, which) -> {
 
-                        // 避難所リストを作成
-                        List<LatLng> evacuationPoints = new ArrayList<>();
-                        evacuationPoints.add(new LatLng(37.39830881, 140.35796203)); // 開成山公園
-                        evacuationPoints.add(new LatLng(37.376782, 140.392777));     // 東部体育館
-                        evacuationPoints.add(new LatLng(37.36942367, 140.37393403)); // ビッグパレット
-                        evacuationPoints.add(new LatLng(37.419631, 140.390504));     // 富久山公民館
+//                        // 修正後
+//                        evacuationPoints.clear(); // 必要なら既存データをクリア
 
                         totalEvacuationPoints = evacuationPoints.size();
                         successfulRouteCount = 0; // リセット
@@ -317,6 +338,46 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     })
                     .show();
         });
+    }
+
+    private void loadEvacuationPointsFromDB() {
+        db.collection("test_shelters")
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    evacuationPoints.clear();
+
+                    for (DocumentSnapshot doc : querySnapshot) {
+                        Double lat = doc.getDouble("lat");
+                        Double lng = doc.getDouble("lng");
+                        String name = doc.getString("name");
+                        String address = doc.getString("address");
+
+                        if (lat != null && lng != null) {
+                            LatLng point = new LatLng(lat, lng);
+                            evacuationPoints.add(point);
+
+                            Marker marker = googleMap.addMarker(new MarkerOptions()
+                                    .position(point)
+                                    .title(name != null ? name : "未設定避難所")
+                                    .snippet(address != null ? address : "")
+                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                            );
+
+                            if (marker != null) marker.setTag("evacuation");
+                        }
+                    }
+
+                    // 🔹 フラグが立っていれば危険回避ルート描画
+                    if (isEvacuationRouteRequested) {
+                        totalEvacuationPoints = evacuationPoints.size();
+                        for (LatLng dest : evacuationPoints) {
+                            drawRouteAvoiding(dest);
+                        }
+                        isEvacuationRouteRequested = false; // 描画後リセット
+                    }
+
+                })
+                .addOnFailureListener(e -> Log.e(TAG, "避難所読み込み失敗", e));
     }
 
     // ----------------------------------------------------------------------
@@ -442,25 +503,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // --- 現在地 ---
         setCurrentLocationMarker();
 
-        // --- 避難所ピンを直接追加 ---
-        List<LatLng> evacuationPoints = new ArrayList<>();
         List<String> evacuationNames = new ArrayList<>();
-
-        // ① 開成山公園
-        evacuationPoints.add(new LatLng(37.39830881, 140.35796203));
-        evacuationNames.add("開成山公園");
-
-        // ② 東部体育館
-        evacuationPoints.add(new LatLng(37.376782, 140.392777));
-        evacuationNames.add("東部体育館");
-
-        // ③ ビッグパレットふくしま
-        evacuationPoints.add(new LatLng(37.36942367, 140.37393403));
-        evacuationNames.add("ビッグパレットふくしま");
-
-        // ④ 富久山公民館
-        evacuationPoints.add(new LatLng(37.419631, 140.390504));
-        evacuationNames.add("富久山公民館");
 
         // ループでマーカー作成
         for (int i = 0; i < evacuationPoints.size(); i++) {
@@ -1062,6 +1105,3 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .show();
     }
 }
-
-
-
