@@ -35,8 +35,9 @@
 
     <ImageView
         android:id="@+id/imageUserIcon"
-        android:layout_width="103dp"
+        android:layout_width="117dp"
         android:layout_height="117dp"
+        android:scaleType="centerCrop"
         android:layout_marginTop="60dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -47,7 +48,7 @@
         android:id="@+id/tvUserNameTop"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="taro さん"
+        android:text="ゲスト さん"
         android:textColor="@android:color/white"
         android:textSize="30sp"
         android:layout_marginTop="8dp"

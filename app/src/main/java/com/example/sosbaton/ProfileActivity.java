@@ -19,6 +19,14 @@ import androidx.appcompat.app.AlertDialog;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.EmailAuthProvider;
 import android.util.Log;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import android.net.Uri;
+import com.google.firebase.storage.FirebaseStorage; // storage = FirebaseStorage.getInstance(); のため
+import com.google.firebase.storage.StorageReference; // fileRef の型定義のため
+import com.google.firebase.firestore.FieldValue; // FieldValue.delete() のため
+import com.bumptech.glide.Glide; // Glide.with(this).load(url).into(imageUserIcon); のため
+
 
 
 
@@ -30,6 +38,10 @@ public class ProfileActivity extends AppCompatActivity {
 
     private TextView tvUserNameTop, tvValueName, tvValueEmail;
 
+    private FirebaseStorage storage;
+    private ImageView imageUserIcon;
+    private ActivityResultLauncher<String> imagePickerLauncher;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
@@ -38,6 +50,7 @@ public class ProfileActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
+        storage = FirebaseStorage.getInstance();
 
         // 戻る
         ImageButton backButton = findViewById(R.id.backButton);
@@ -56,6 +69,10 @@ public class ProfileActivity extends AppCompatActivity {
         btnEditName.setOnClickListener(v -> showEditNameDialog());
         btnEditEmail.setOnClickListener(v -> showEditEmailDialog());
         btnEditPassword.setOnClickListener(v -> showEditPasswordDialog());
+
+        imageUserIcon = findViewById(R.id.imageUserIcon);
+        imageUserIcon.setOnClickListener(v -> showIconOptionsDialog());
+        setupImagePickerLauncher();
 
         // ユーザー情報読み込み
         loadUserInfo();
@@ -77,6 +94,17 @@ public class ProfileActivity extends AppCompatActivity {
                         String name = doc.getString("username");
                         tvUserNameTop.setText(name + " さん");
                         tvValueName.setText(name);
+                    }
+                    if (doc.contains("iconUrl")) {
+                        String iconUrl = doc.getString("iconUrl");
+                        if (iconUrl != null && !iconUrl.isEmpty()) {
+                            // Glideなどのライブラリを使って画像をロードするのだ
+                            // (Glideを使用している場合の例なのだ)
+                            Glide.with(this).load(iconUrl).into(imageUserIcon);
+                        } else {
+                            // URLがない場合はデフォルトアイコンに戻すのだ
+                            imageUserIcon.setImageResource(R.drawable.initial_icon_user_);
+                        }
                     }
                 })
                 .addOnFailureListener(e ->
@@ -228,5 +256,156 @@ public class ProfileActivity extends AppCompatActivity {
 
         builder.setNegativeButton("キャンセル", (d, w) -> d.cancel());
         builder.show();
+    }
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    // ❹ アイコン操作ダイアログ
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    private void showIconOptionsDialog() {
+        // 画像URLが設定されているか（FirestoreのユーザーデータにiconUrlフィールドがあるか）をチェック
+        // loadUserInfoでiconUrlが読み込まれている前提で、Firestoreから改めて取得するのが確実なのだ
+        db.collection("users").document(auth.getCurrentUser().getUid()).get()
+                .addOnSuccessListener(doc -> {
+                    String currentIconUrl = doc.getString("iconUrl");
+
+                    // アイコンが設定済みかどうかに応じて選択肢を変えるのだ
+                    String[] options;
+                    if (currentIconUrl != null && !currentIconUrl.isEmpty()) {
+                        // 既にアイコンがある場合: 変更、削除、キャンセルの3択
+                        options = new String[]{"新しいアイコンを選択", "アイコンを削除", "キャンセル"};
+                    } else {
+                        // アイコンがない場合: 設定、キャンセルの2択
+                        options = new String[]{"アイコンを設定", "キャンセル"};
+                    }
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("アイコンの操作");
+
+                    builder.setItems(options, (dialog, which) -> {
+                        if (options[which].equals("新しいアイコンを選択") || options[which].equals("アイコンを設定")) {
+                            // ギャラリーから画像を選択するのだ
+                            selectImage();
+                        } else if (options[which].equals("アイコンを削除")) {
+                            // 画像を削除するのだ
+                            deleteIcon();
+                        } else if (options[which].equals("キャンセル")) {
+                            dialog.dismiss();
+                        }
+                    });
+                    builder.show();
+                });
+    }
+
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    // ❺ ギャラリーから画像を選択 (修正後)
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    private void selectImage() {
+        // startAcitivityForResultは使わないのだ！
+        // image/* のMIMEタイプでギャラリーを開くのだ
+        imagePickerLauncher.launch("image/*");
+    }
+
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    // ❼ Firebase Storageに画像をアップロード
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    private void uploadImageToStorage(Uri imageUri) {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) return;
+
+        // Storageの参照を作成するのだ (例: users/UID/profile_icon.jpg)
+        StorageReference fileRef = storage.getReference()
+                .child("users/" + user.getUid() + "/profile_icon.jpg");
+
+        // アップロードを実行するのだ
+        fileRef.putFile(imageUri)
+                .addOnSuccessListener(taskSnapshot -> {
+                    // アップロード成功後、画像のダウンロードURLを取得するのだ
+                    fileRef.getDownloadUrl().addOnSuccessListener(uri -> {
+                        String imageUrl = uri.toString();
+                        // 取得したURLをFirestoreとFirebase Authのプロフィールに保存するのだ
+                        saveIconUrl(imageUrl);
+                    });
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "アップロード失敗: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Log.e("STORAGE_UPLOAD", "アップロード失敗", e);
+                });
+    }
+
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    // ❽ アイコンURLをFirestoreに保存
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    private void saveIconUrl(String url) {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) return;
+
+        // FirestoreのユーザーデータにURLを保存するのだ
+        db.collection("users").document(user.getUid())
+                .update("iconUrl", url)
+                .addOnSuccessListener(aVoid -> {
+                    // 成功したらImageViewを更新するのだ
+                    // Glideなどのライブラリを使用
+                    Glide.with(this).load(url).into(imageUserIcon);
+                    Toast.makeText(this, "アイコンを更新しました", Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this, "URL保存失敗: " + e.getMessage(), Toast.LENGTH_LONG).show());
+
+        // ちなみに、Firebase Authのプロフィール（photoUrl）にも保存できるのだ
+        // UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+        //         .setPhotoUri(Uri.parse(url))
+        //         .build();
+        // user.updateProfile(profileUpdates);
+    }
+
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    // ❾ アイコンの削除
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    private void deleteIcon() {
+        FirebaseUser user = auth.getCurrentUser();
+        if (user == null) return;
+
+        // 1. Storageから画像を削除
+        StorageReference fileRef = storage.getReference()
+                .child("users/" + user.getUid() + "/profile_icon.jpg");
+
+        fileRef.delete().addOnSuccessListener(aVoid -> {
+            // 2. FirestoreからURLを削除
+            db.collection("users").document(user.getUid())
+                    .update("iconUrl", FieldValue.delete()) // フィールドを削除
+                    .addOnSuccessListener(task -> {
+                        // 3. UIをデフォルトに戻す
+                        imageUserIcon.setImageResource(R.drawable.initial_icon_user_);
+                        Toast.makeText(this, "アイコンを削除しました", Toast.LENGTH_SHORT).show();
+                    })
+                    .addOnFailureListener(e ->
+                            Toast.makeText(this, "FirestoreのURL削除失敗: " + e.getMessage(), Toast.LENGTH_LONG).show());
+        }).addOnFailureListener(e -> {
+            // 画像が存在しなかった場合も成功とみなすことがあるので、エラー処理は控えめにするのだ
+            Log.e("STORAGE_DELETE", "Storageからの削除失敗 (ファイルが存在しない可能性): " + e.getMessage());
+            // Storageから削除できなくてもFirestoreのURLだけでも消しておくのだ
+            db.collection("users").document(user.getUid())
+                    .update("iconUrl", FieldValue.delete())
+                    .addOnSuccessListener(task -> {
+                        imageUserIcon.setImageResource(R.drawable.initial_icon_user_);
+                        Toast.makeText(this, "アイコンを削除しました", Toast.LENGTH_SHORT).show();
+                    });
+        });
+    }
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    // 10. 画像選択ランチャーの初期化
+    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
+    private void setupImagePickerLauncher() {
+        imagePickerLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(),
+                (Uri imageUri) -> {
+                    // ここが onActivityResult の代わりになるのだ
+                    if (imageUri != null) {
+                        uploadImageToStorage(imageUri);
+                    } else {
+                        // 画像が選択されなかった場合の処理
+                        Toast.makeText(this, "画像選択をキャンセルしたのだ", Toast.LENGTH_SHORT).show();
+                    }
+                }
+        );
     }
 }
