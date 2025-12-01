@@ -50,6 +50,9 @@ import java.util.ArrayList;
 import com.google.android.gms.maps.model.LatLng;
 import com.example.sosbaton.BuildConfig;
 import android.location.Location;
+import android.widget.Toast;
+
+import com.google.firebase.auth.UserProfileChangeRequest;
 
 
 
@@ -72,7 +75,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 //    private LocationCallback locationCallback;
 
     private FirebaseFirestore db;
+
     private FirebaseAuth auth;
+
+    private FirebaseUser currentUser;
 
 
 
@@ -86,7 +92,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // レイアウトセット
         setContentView(R.layout.activity_main);
-
 
         // --- View取得 ---
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -102,6 +107,64 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         FirebaseApp.initializeApp(this);
         db = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
+
+
+
+
+// 起動時にログインユーザーをチェックするのだ！
+
+        currentUser = auth.getCurrentUser();
+
+        if (currentUser != null) {
+            // ログイン状態が維持されているのだ！
+
+            // 現在のユーザー名（displayName）をチェックするのだ！
+            String displayName = currentUser.getDisplayName();
+
+            if (displayName != null && !displayName.isEmpty()) {
+                // ① displayNameが既に設定されている場合なのだ！
+
+                String welcomeMessage = "ようこそ、" + displayName + "なのだ！";
+                Toast.makeText(this, welcomeMessage, Toast.LENGTH_LONG).show();
+                // マップ画面など、アプリのメインコンテンツを表示するのだ。
+
+            } else {
+                // ② displayNameが未設定の場合 (Firestoreからusernameを取得するのだ！)
+                String currentUid = currentUser.getUid();
+
+                // 独自にusernameを保存しているコレクション（例: "users"）にアクセスするのだ！
+                db.collection("users")
+                        .document(currentUid)
+                        .get()
+                        .addOnSuccessListener(documentSnapshot -> {
+                            String registeredUsername = documentSnapshot.getString("username"); // データベースからusernameを取得するのだ
+
+                            if (registeredUsername != null) {
+                                // usernameがデータベースにあった場合なのだ！
+
+                                // FirebaseのdisplayNameも更新して、次回以降はすぐに取得できるようにするのだ！
+                                updateFirebaseDisplayName(currentUser, registeredUsername);
+
+                            } else {
+                                // データベースにもusernameがない場合なのだ...
+                                String welcomeMessage = "ようこそ、名無しさんなのだ！";
+                                Toast.makeText(this, welcomeMessage, Toast.LENGTH_LONG).show();
+                            }
+                        })
+                        .addOnFailureListener(e -> {
+                            // Firestoreからの取得に失敗した場合なのだ
+                            Log.e(TAG, "ユーザー名の取得に失敗したのだ: " + e.getMessage());
+                            String welcomeMessage = "ようこそ、名無しさんなのだ！";
+                            Toast.makeText(this, welcomeMessage, Toast.LENGTH_LONG).show();
+                        });
+            }
+
+        } else {
+            // 誰もログインしていないのだ！
+            Log.d(TAG, "ログインが必要なのだ。");
+            // ログイン画面へ誘導するのだ。
+        }
+
 
 
         //SOSでユーザネームを取得
@@ -126,7 +189,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         setSupportActionBar(toolbar);
 
         // --- ログイン中ユーザー情報を取得してヘッダーに表示 ---
-        FirebaseUser currentUser = auth.getCurrentUser();
+        currentUser = auth.getCurrentUser();
         View headerView = navigationView.getHeaderView(0);
         TextView tvUserName = headerView.findViewById(R.id.tvUserName);
 
@@ -209,8 +272,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
         // --- Firebase 初期化 ---
-        FirebaseApp.initializeApp(this);
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        // FirebaseApp.initializeApp(this);
+        // FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         //経路選択
 // --- btnEvacuate のクリック処理 ---
@@ -286,6 +349,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 //
     }
 
+    // ----------------------------------------------------------------------
+// 【補足：displayNameを更新する関数を別途作成するのだ！】
+
+    private void updateFirebaseDisplayName(FirebaseUser user, String newDisplayName) {
+        UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                .setDisplayName(newDisplayName)
+                .build();
+
+        user.updateProfile(profileUpdates)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Log.d("Profile", "displayNameをusernameに更新完了なのだ！");
+
+                        // 更新完了後、ユーザー名でToast表示するのだ！
+                        Toast.makeText(this, "ようこそ、" + newDisplayName + "なのだ！", Toast.LENGTH_LONG).show();
+                    } else {
+                        Log.w("Profile", "更新失敗なのだ。", task.getException());
+                        // 失敗した場合も、取得したusernameでとりあえずToast表示するのも手なのだ。
+                        Toast.makeText(this, "ようこそ、" + newDisplayName + "なのだ！", Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
 
     @Override
     protected void onResume() {
