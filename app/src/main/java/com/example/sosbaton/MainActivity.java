@@ -150,26 +150,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 // usernameがデータベースにあった場合
                                 userName = registeredUsername;
 
-                                // FirebaseのdisplayNameも更新して、次回以降はすぐに取得できるようにするのだ！
+                                // FirebaseのdisplayNameも更新して、次回以降はすぐに取得できるようにする
                                 updateFirebaseDisplayName(currentUser, registeredUsername);
 
                             } else {
-                                // データベースにもusernameがない場合なのだ...
-                                String welcomeMessage = "ようこそ、名無しさんなのだ！";
+                                // データベースにもusernameがない場合
+                                String welcomeMessage = "ようこそ、名無しさん！";
                                 Toast.makeText(this, welcomeMessage, Toast.LENGTH_LONG).show();
                             }
                         })
                         .addOnFailureListener(e -> {
-                            // Firestoreからの取得に失敗した場合なのだ
-                            Log.e(TAG, "ユーザー名の取得に失敗したのだ: " + e.getMessage());
-                            String welcomeMessage = "ようこそ、名無しさんなのだ！";
+                            // Firestoreからの取得に失敗した場合
+                            Log.e(TAG, "ユーザー名の取得に失敗しました: " + e.getMessage());
+                            String welcomeMessage = "ようこそ、名無しさん！";
                             Toast.makeText(this, welcomeMessage, Toast.LENGTH_LONG).show();
                         });
             }
 
         } else {
             // 誰もログインしていないのだ！
-            Log.d(TAG, "ログインが必要なのだ。");
+            Log.d(TAG, "ログインが必要です。");
+            Toast.makeText(this, "ゲストモードでは、一部機能の利用が制限されます。", Toast.LENGTH_LONG).show();
             // ログイン画面へ誘導するのだ。
         }
 
@@ -241,7 +242,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             } else if (id == R.id.nav_profile) {
                 startActivity(new Intent(MainActivity.this, ProfileActivity.class));
             } else if (id == R.id.nav_settings) {
-                // 設定
+                // 【ログアウト処理をここに追加するのだ！】
+                auth.signOut(); // Firebaseからログアウトさせるのだ！
+
+                // ログアウトが成功したら、スタート画面（またはログイン画面）に戻るのだ！
+                // Intentのフラグを使って、現在開いているActivityをすべて閉じるのが確実なのだ。
+                Intent intent = new Intent(MainActivity.this, StartActivity.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                startActivity(intent);
             }
             drawerLayout.closeDrawers();
             return true;
@@ -384,21 +392,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 // 【補足：displayNameを更新する関数を別途作成する】
 
     private void updateFirebaseDisplayName(FirebaseUser user, String newDisplayName) {
+
         UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
                 .setDisplayName(newDisplayName)
                 .build();
 
         user.updateProfile(profileUpdates)
                 .addOnCompleteListener(task -> {
+
                     if (task.isSuccessful()) {
-                        Log.d("Profile", "displayNameをusernameに更新完了なのだ！");
+                        Log.d("Profile", "displayNameをusernameに更新完了");
 
                         userName = newDisplayName;
 
                         // 更新完了後、ユーザー名でToast表示する
                         Toast.makeText(this, "ようこそ、" + newDisplayName + "なのだ！", Toast.LENGTH_LONG).show();
                     } else {
-                        Log.w("Profile", "更新失敗なのだ。", task.getException());
+                        Log.w("Profile", "更新失敗", task.getException());
 
                         userName = newDisplayName;
 

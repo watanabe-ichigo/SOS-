@@ -72,16 +72,16 @@
         android:id="@+id/tvValueName"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="taro"
-        android:textColor="@android:color/black"
-        android:textSize="16sp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="8dp"
-        app:layout_constraintStart_toEndOf="@id/tvLabelName"
-        app:layout_constraintEnd_toStartOf="@id/btnEditName"
+        android:text="ゲスト"
+        android:textColor="@android:color/black"
+        android:textSize="16sp"
         app:layout_constraintBaseline_toBaselineOf="@id/tvLabelName"
+        app:layout_constraintEnd_toStartOf="@id/btnEditName"
         app:layout_constraintHorizontal_bias="0"
-        app:layout_constraintHorizontal_chainStyle="packed" />
+        app:layout_constraintHorizontal_chainStyle="packed"
+        app:layout_constraintStart_toEndOf="@id/tvLabelName" />
 
     <ImageView
         android:id="@+id/btnEditName"
@@ -110,16 +110,16 @@
         android:id="@+id/tvValueEmail"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="taro@example.com"
-        android:textColor="@android:color/black"
-        android:textSize="16sp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="8dp"
-        app:layout_constraintStart_toEndOf="@id/tvLabelEmail"
-        app:layout_constraintEnd_toStartOf="@id/btnEditEmail"
+        android:text="未登録"
+        android:textColor="@android:color/black"
+        android:textSize="16sp"
         app:layout_constraintBaseline_toBaselineOf="@id/tvLabelEmail"
+        app:layout_constraintEnd_toStartOf="@id/btnEditEmail"
         app:layout_constraintHorizontal_bias="0"
-        app:layout_constraintHorizontal_chainStyle="packed" />
+        app:layout_constraintHorizontal_chainStyle="packed"
+        app:layout_constraintStart_toEndOf="@id/tvLabelEmail" />
 
     <ImageView
         android:id="@+id/btnEditEmail"
@@ -148,16 +148,16 @@
         android:id="@+id/tvValuePassword"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="●●●●●●"
-        android:textColor="@android:color/black"
-        android:textSize="16sp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="8dp"
-        app:layout_constraintStart_toEndOf="@id/tvLabelPassword"
-        app:layout_constraintEnd_toStartOf="@id/btnEditPassword"
+        android:text="未登録"
+        android:textColor="@android:color/black"
+        android:textSize="16sp"
         app:layout_constraintBaseline_toBaselineOf="@id/tvLabelPassword"
+        app:layout_constraintEnd_toStartOf="@id/btnEditPassword"
         app:layout_constraintHorizontal_bias="0"
-        app:layout_constraintHorizontal_chainStyle="packed" />
+        app:layout_constraintHorizontal_chainStyle="packed"
+        app:layout_constraintStart_toEndOf="@id/tvLabelPassword" />
 
     <ImageView
         android:id="@+id/btnEditPassword"
