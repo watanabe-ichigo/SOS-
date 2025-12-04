@@ -117,37 +117,37 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
 
-// 起動時にログインユーザーをチェックするのだ！
+// 起動時にログインユーザーをチェックする
 
         currentUser = auth.getCurrentUser();
 
         if (currentUser != null) {
-            // ログイン状態が維持されているのだ！
+            // ログイン状態が維持されている
 
-            // 現在のユーザー名（displayName）をチェックするのだ！
+            // 現在のユーザー名（displayName）をチェックする
             String displayName = currentUser.getDisplayName();
             userName = displayName;
 
             if (displayName != null && !displayName.isEmpty()) {
-                // ① displayNameが既に設定されている場合なのだ！
+                // ① displayNameが既に設定されている場合
 
-                String welcomeMessage = "ようこそ、" + displayName + "なのだ！";
+                String welcomeMessage = displayName + "さん、おかえりなさい！";
                 Toast.makeText(this, welcomeMessage, Toast.LENGTH_LONG).show();
                 // マップ画面など、アプリのメインコンテンツを表示するのだ。
 
             } else {
-                // ② displayNameが未設定の場合 (Firestoreからusernameを取得するのだ！)
+                // ② displayNameが未設定の場合 (Firestoreからusernameを取得する)
                 String currentUid = currentUser.getUid();
 
-                // 独自にusernameを保存しているコレクション（例: "users"）にアクセスするのだ！
+                // 独自にusernameを保存しているコレクション（例: "users"）にアクセスする
                 db.collection("users")
                         .document(currentUid)
                         .get()
                         .addOnSuccessListener(documentSnapshot -> {
-                            String registeredUsername = documentSnapshot.getString("username"); // データベースからusernameを取得するのだ
+                            String registeredUsername = documentSnapshot.getString("username"); // データベースからusernameを取得する
 
                             if (registeredUsername != null) {
-                                // usernameがデータベースにあった場合なのだ！
+                                // usernameがデータベースにあった場合
                                 userName = registeredUsername;
 
                                 // FirebaseのdisplayNameも更新して、次回以降はすぐに取得できるようにするのだ！
@@ -381,7 +381,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     // ----------------------------------------------------------------------
-// 【補足：displayNameを更新する関数を別途作成するのだ！】
+// 【補足：displayNameを更新する関数を別途作成する】
 
     private void updateFirebaseDisplayName(FirebaseUser user, String newDisplayName) {
         UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
@@ -395,14 +395,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                         userName = newDisplayName;
 
-                        // 更新完了後、ユーザー名でToast表示するのだ！
+                        // 更新完了後、ユーザー名でToast表示する
                         Toast.makeText(this, "ようこそ、" + newDisplayName + "なのだ！", Toast.LENGTH_LONG).show();
                     } else {
                         Log.w("Profile", "更新失敗なのだ。", task.getException());
 
                         userName = newDisplayName;
 
-                        // 失敗した場合も、取得したusernameでとりあえずToast表示するのも手なのだ。
+                        // 失敗した場合も、取得したusernameでとりあえずToast表示するのも手
                         Toast.makeText(this, "ようこそ、" + newDisplayName + "なのだ！", Toast.LENGTH_LONG).show();
                     }
                 });
@@ -528,7 +528,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // --- マーカークリックメニュー ---
         googleMap.setOnMarkerClickListener(marker -> {
             Object tag = marker.getTag();
-            String docId = null; // ドキュメントIDを格納する変数なのだ
+            String docId = null; // ドキュメントIDを格納する変数
 
             if (tag instanceof Map) {
                 // Tag が Map の場合は、そこから docId を取り出すのだ
@@ -536,14 +536,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 docId = (String) tagData.get("docId");
 
             } else if (tag instanceof String) {
-                // Tag が String の場合は、それが docId だと見なすのだ（古いコードの名残かもしれないが）
+                // Tag が String の場合は、それが docId だと見なすのだ（古いコードの名残かもしれない）
                 docId = (String) tag;
 
             }
 
-            if (docId != null) { // docId が取得できたら処理を続けるのだ！
+            if (docId != null) { // docId が取得できたら処理を続ける
 
-                String finalDocId = docId; // ラムダ式内で使うために final 化するのだ
+                String finalDocId = docId; // ラムダ式内で使うために final 化する
                 new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
                         .setTitle("ピン操作")
                         .setItems(new CharSequence[]{"ここへ行く", "削除", "キャンセル"},
@@ -554,7 +554,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                             break;
 
                                         case 1:
-                                            // 削除関数も docId を受け取るように修正が必要かもしれないのだ
+                                            // 削除関数も docId を受け取るように修正が必要かもしれない
                                             deletePin(marker, finalDocId);
                                             break;
 
@@ -599,10 +599,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
                     if (marker != null) {
-                        // 修正点：TagにDocument IDと type を持つ HashMap を設定するのだ！
+                        // 修正点：TagにDocument IDと type を持つ HashMap を設定する
                         Map<String, Object> tagData = new HashMap<>();
                         tagData.put("docId", docRef.getId());
-                        tagData.put("type", (long)type); // long型にキャストして合わせるのだ
+                        tagData.put("type", (long)type); // long型にキャストして合わせる
 
                         marker.setTag(tagData);
                     }
@@ -639,7 +639,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             if (marker != null) {
                                 Map<String, Object> tagData = new HashMap<>();
                                 tagData.put("docId", doc.getId());
-                                tagData.put("type", type); // ← これが重要！
+                                tagData.put("type", type);
 
                                 marker.setTag(tagData);
                                 allMarkers.add(marker);
