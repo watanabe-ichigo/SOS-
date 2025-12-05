@@ -12,9 +12,6 @@ import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import java.util.Map;
 import java.util.HashMap;
-
-
-
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -24,7 +21,6 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.app.ActivityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
-
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapView;
@@ -41,18 +37,16 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationRequest;
 import android.app.AlertDialog;
 import java.util.List;
 import java.util.ArrayList;
-import com.google.android.gms.maps.model.LatLng;
-import com.example.sosbaton.BuildConfig;
 import android.location.Location;
 import android.widget.Toast;
-
 import com.google.firebase.auth.UserProfileChangeRequest;
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+
+
 
 
 
@@ -85,6 +79,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private int finishedRouteCount = 0; // 新規：避難所ごとのルート探索完了数
     private boolean isEvacuationRouteRequested = false;
     private final Object routeLock = new Object(); // スレッド安全のため
+    private Marker selectedMarker = null;
+    private String selectedDocId = null;
 
 
 
@@ -113,6 +109,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         FirebaseApp.initializeApp(this);
         db = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
+
+        //ボトムシートボタン定義
+        Button btngo = findViewById(R.id.btngo);
+        Button btndelete = findViewById(R.id.btndelete);
+        Button Close = findViewById(R.id.Close);
+        //閉じる
+        Close.setOnClickListener(v->{
+            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+        });
+
+
+        //ココへ行く
+        btngo.setOnClickListener(v -> {
+            drawRouteShortest(selectedMarker.getPosition());
+        });
+        //削除
+        btndelete.setOnClickListener(v->{
+            deletePin(selectedMarker, selectedDocId);
+        });
+
+        loadShelters();
+        setupBottomSheet();
 
 
 
@@ -267,30 +285,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             mapView.onCreate(savedInstanceState);
             mapView.getMapAsync(this);
             loadEvacuationPointsFromDB();
-            // ここに btnEvacuate の設定を追加
-            Button btnEvacuate = findViewById(R.id.btevacuation);
 
-            btnEvacuate.setOnClickListener(v -> {
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("ルート選択")
-                        .setMessage("避難方法を選択してください")
-                        .setPositiveButton("危険回避ルート", (dialog, which) -> {
-                            isEvacuationRouteRequested = true;
-                            loadEvacuationPointsFromDB();
-                            successfulRouteCount = 0;
-                            finishedRouteCount = 0;
-                        })
-                        .setNegativeButton("安全経由ルート", (dialog, which) -> {
-                            // 安全ルート処理
-                        })
-                        .setNeutralButton("最短ルート", (dialog, which) -> {
-                            drawRouteShortest(new LatLng(37.39830881, 140.35796203));
-                            drawRouteShortest(new LatLng(37.376782, 140.392777));
-                            drawRouteShortest(new LatLng(37.36942367, 140.37393403));
-                            drawRouteShortest(new LatLng(37.419631, 140.390504));
-                        })
-                        .show();
-            });
+
         }
 
         // --- SOSボタン ---
@@ -316,36 +312,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         //経路選択
 // --- btnEvacuate のクリック処理 ---
-        Button btnEvacuate = findViewById(R.id.btevacuation);
 
-        btnEvacuate.setOnClickListener(v -> {
-            new AlertDialog.Builder(MainActivity.this)
-                    .setTitle("ルート選択")
-                    .setMessage("避難方法を選択してください")
-                    .setPositiveButton("危険回避ルート", (dialog, which) -> {
 
-//                        // 修正後
-//                        evacuationPoints.clear(); // 必要なら既存データをクリア
-
-                        totalEvacuationPoints = evacuationPoints.size();
-                        successfulRouteCount = 0; // リセット
-                        // 各避難所へのルート描画
-                        for (LatLng dest : evacuationPoints) {
-                            drawRouteAvoiding(dest);
-                        }
-                    })
-                    .setNegativeButton("安全経由ルート", (dialog, which) -> {
-                        // 安全ルートの処理をここに追加
-                    })
-                    .setNeutralButton("最短ルート", (dialog, which) -> {
-                        // 例: 最短ルート
-                        drawRouteShortest(new LatLng(37.39830881, 140.35796203));
-                        drawRouteShortest(new LatLng(37.376782, 140.392777));     // 東部体育館
-                        drawRouteShortest(new LatLng(37.36942367, 140.37393403)); // ビッグパレット
-                        drawRouteShortest(new LatLng(37.419631, 140.390504));     // 富久山公民館
-                    })
-                    .show();
-        });
     }
 
     private void loadEvacuationPointsFromDB() {
@@ -537,46 +505,33 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // --- マーカークリックメニュー ---
         googleMap.setOnMarkerClickListener(marker -> {
+            selectedMarker = marker;  // ★これだけでOK
+            saveSelectedDocId(marker);
             Object tag = marker.getTag();
-            String docId = null; // ドキュメントIDを格納する変数
+            if (tag instanceof Shelter) {
+                Shelter s = (Shelter) tag;
+                txtName.setText(s.name);
+                txtAddress.setText(s.address);
+                txtType.setText(s.type);
 
-            if (tag instanceof Map) {
-                // Tag が Map の場合は、そこから docId を取り出すのだ
-                Map<String, Object> tagData = (Map<String, Object>) tag;
-                docId = (String) tagData.get("docId");
-
-            } else if (tag instanceof String) {
-                // Tag が String の場合は、それが docId だと見なすのだ（古いコードの名残かもしれない）
-                docId = (String) tag;
-
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
             }
 
-            if (docId != null) { // docId が取得できたら処理を続ける
+            return false; // InfoWindow を開きたい場合
 
-                String finalDocId = docId; // ラムダ式内で使うために final 化する
-                new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
-                        .setTitle("ピン操作")
-                        .setItems(new CharSequence[]{"ここへ行く", "削除", "キャンセル"},
-                                (dialog, which) -> {
-                                    switch (which) {
-                                        case 0:
-                                            drawRouteShortest(marker.getPosition());
-                                            break;
-
-                                        case 1:
-                                            // 削除関数も docId を受け取るように修正が必要かもしれない
-                                            deletePin(marker, finalDocId);
-                                            break;
-
-                                        default:
-                                            dialog.dismiss();
-                                    }
-                                })
-                        .show();
-            }
-            // ここで return true; を忘れるな！
-            return true;
         });
+
+// --- 権限あるなら位置更新 ---
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+            startLocationUpdates();
+        }
+
+        googleMap.setOnInfoWindowClickListener(marker -> {
+
+        });
+
+
 
         // --- 権限あるなら位置更新 ---
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -1113,5 +1068,69 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 })
                 .setNegativeButton("キャンセル", (dialog, which) -> dialog.dismiss())
                 .show();
+    }
+    //④ボトムシートの初期化処理
+
+    //ボトムシートの開閉やスライド制御のインスタンス
+    BottomSheetBehavior<View> bottomSheetBehavior;
+
+    TextView txtName, txtAddress, txtType;
+
+    private void setupBottomSheet() {
+        View bottomSheet = findViewById(R.id.bottomSheet);
+        bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+        txtName = findViewById(R.id.txtShelterName);
+        txtAddress = findViewById(R.id.txtShelterAddress);
+        txtType = findViewById(R.id.txtShelterType);
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+    }
+    private void saveSelectedDocId(Marker marker) {
+        Object tag = marker.getTag();
+
+        if (tag instanceof Shelter) {
+            Shelter s = (Shelter) tag;
+            selectedDocId = s.docId;
+            Log.d("TAG", "Shelter docId を保存: " + selectedDocId);
+            return;
+        }
+
+        if (tag instanceof Map) {
+            Object id = ((Map<?, ?>) tag).get("docId");
+            if (id != null) {
+                selectedDocId = id.toString();
+                Log.d("TAG", "UserPin docId を保存: " + selectedDocId);
+                return;
+            }
+        }
+
+        selectedDocId = null;
+        Log.w("TAG", "docId を保存できませんでした（tag が不明）");
+    }
+    private void loadShelters() {
+        db.collection("shelters").get().addOnSuccessListener(query -> {
+            for (DocumentSnapshot doc : query) {
+                String docId = doc.getId();
+                String name = doc.getString("name");
+                String address = doc.getString("address");
+                String type = doc.getString("type");
+                double lat = doc.getDouble("lat");
+                double lng = doc.getDouble("lng");
+                LatLng position = new LatLng(lat, lng);
+
+                Marker marker = googleMap.addMarker(new MarkerOptions()
+                        .position(position)
+                        .title(name));
+
+                marker.setTag(new Shelter(
+                        docId,
+                        name,
+                        address,
+                        type,
+                        lat,
+                        lng
+                ));
+            }
+
+        });
     }
 }

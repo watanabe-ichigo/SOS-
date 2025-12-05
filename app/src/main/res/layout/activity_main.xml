@@ -4,16 +4,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/drawer_layout"
-
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-
     tools:context=".MainActivity">
 
-
-
-    <!-- メインコンテンツ -->
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:id="@+id/main_content"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -24,54 +19,34 @@
 
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:layout_marginTop="40dp"
             android:background="#F66B6B"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
+            android:translationZ="30dp"
             app:title="マップ画面"
             app:titleTextColor="@android:color/white" />
 
-
         <com.google.android.gms.maps.MapView
             android:id="@+id/mapView"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.0"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/toolbar"
-            app:layout_constraintVertical_bias="0.0" />
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="?attr/actionBarSize" />
 
-        <Button
-            android:id="@+id/btevacuation"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="24dp"
-            android:layout_marginBottom="20dp"
-            android:background="@drawable/rounded_button"
-            android:paddingStart="20dp"
-            android:paddingEnd="20dp"
-            android:text="避難する"
-            android:textColor="#FFF"
-            android:visibility="visible"
-            app:layout_constraintBottom_toTopOf="@+id/bottom_menu"
-            app:layout_constraintEnd_toEndOf="parent" />
+        <!-- 避難ボタン（アンカーを削除して margin-bottom で固定） -->
+
+        <!-- 下メニュー（アンカー削除 → layout_gravity で貼り付け） -->
+
+        <!-- BottomSheet（正しく behavior を付ける） -->
 
         <LinearLayout
             android:id="@+id/bottom_menu"
-            android:layout_width="0dp"
-            android:layout_height="100dp"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_gravity="bottom"
             android:background="#DDFFFFFF"
             android:gravity="center"
-            android:orientation="horizontal"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent">
+            android:orientation="horizontal">
 
             <ImageButton
                 android:id="@+id/btn_pin"
@@ -79,15 +54,17 @@
                 android:layout_height="80dp"
                 android:layout_weight="1"
                 android:background="@android:color/transparent"
-                android:src="@drawable/pin_green" />
+                android:src="@drawable/pin_add" />
 
             <ImageButton
                 android:id="@+id/btn_post"
-                android:layout_width="6dp"
+                android:layout_width="0dp"
                 android:layout_height="80dp"
                 android:layout_weight="1"
+                android:adjustViewBounds="true"
                 android:background="@android:color/transparent"
-                android:src="@drawable/pin_add" />
+                android:scaleType="fitCenter"
+                android:src="@mipmap/red" />
 
             <ImageButton
                 android:id="@+id/btn_call"
@@ -95,23 +72,25 @@
                 android:layout_height="80dp"
                 android:layout_weight="1"
                 android:background="@android:color/transparent"
-                android:backgroundTint="#FF0000"
-                android:src="@drawable/call" />
-
+                android:scaleType="fitCenter"
+                android:adjustViewBounds="true"
+                android:src="@mipmap/telephone" />
         </LinearLayout>
-        <!-- ▲▲ 下のメニューここまで ▲▲ -->
 
+        <include
+            android:id="@+id/bottomSheet"
+            layout="@layout/bottom_sheet"
+            app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"/>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-    <!-- Navigation Drawer -->
+    <!-- Drawer -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         android:layout_width="280dp"
         android:layout_height="match_parent"
         android:layout_gravity="start"
         app:menu="@menu/drawer_menu"
-        app:headerLayout="@layout/drawer_header"/>
+        app:headerLayout="@layout/drawer_header" />
+
 </androidx.drawerlayout.widget.DrawerLayout>
-
-

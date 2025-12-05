@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- 背景色（白） -->
+    <solid android:color="#FFFFFFFF"/>
+
+    <!-- 上の角だけ丸くする -->
+    <corners android:topLeftRadius="20dp"
+        android:topRightRadius="20dp"/>
+
+    <!-- 影（必要なら） -->
+    <padding
+        android:left="1dp"
+        android:top="1dp"
+        android:right="1dp"
+        android:bottom="1dp" />
+
+</shape>
