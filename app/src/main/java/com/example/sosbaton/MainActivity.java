@@ -45,6 +45,8 @@ import android.location.Location;
 import android.widget.Toast;
 import com.google.firebase.auth.UserProfileChangeRequest;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.gms.maps.model.Polyline;
+
 
 
 
@@ -81,6 +83,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final Object routeLock = new Object(); // スレッド安全のため
     private Marker selectedMarker = null;
     private String selectedDocId = null;
+    private List<com.google.android.gms.maps.model.Polyline> currentPolylines = new ArrayList<>();
+
+
 
 
 
@@ -110,6 +115,34 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         db = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
 
+        //避難ボタン
+        ImageButton btn_post = findViewById(R.id.btn_post);
+
+        btn_post.setOnClickListener(v->{
+            new AlertDialog.Builder(MainActivity.this)
+                    .setTitle("ルート選択")
+                    .setMessage("避難方法を選択してください")
+                    .setPositiveButton("危険回避ルート", (dialog, which) -> {
+                        clearAllPolylines();
+                        isEvacuationRouteRequested = true;
+                        loadEvacuationPointsFromDB();
+                        successfulRouteCount = 0;
+                        finishedRouteCount = 0;
+                    })
+                    .setNegativeButton("安全経由ルート", (dialog, which) -> {
+                        // 安全ルートの処理をここに追加
+                        clearAllPolylines();
+                    })
+                    .setNeutralButton("最短ルート", (dialog, which) -> {
+                        // 例: 最短ルート
+                        clearAllPolylines();
+                        drawRouteShortest(new LatLng(37.39830881, 140.35796203));
+                        drawRouteShortest(new LatLng(37.376782, 140.392777));     // 東部体育館
+                        drawRouteShortest(new LatLng(37.36942367, 140.37393403)); // ビッグパレット
+                        drawRouteShortest(new LatLng(37.419631, 140.390504));     // 富久山公民館
+                    })
+                    .show();
+        });
         //ボトムシートボタン定義
         Button btngo = findViewById(R.id.btngo);
         Button btndelete = findViewById(R.id.btndelete);
@@ -122,6 +155,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         //ココへ行く
         btngo.setOnClickListener(v -> {
+            clearAllPolylines();
             drawRouteShortest(selectedMarker.getPosition());
         });
         //削除
@@ -284,7 +318,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (mapView != null) {
             mapView.onCreate(savedInstanceState);
             mapView.getMapAsync(this);
-            loadEvacuationPointsFromDB();
+            //loadEvacuationPointsFromDB();
 
 
         }
@@ -310,8 +344,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // FirebaseApp.initializeApp(this);
         // FirebaseFirestore db = FirebaseFirestore.getInstance();
 
-        //経路選択
-// --- btnEvacuate のクリック処理 ---
+
 
 
     }
@@ -331,15 +364,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         if (lat != null && lng != null) {
                             LatLng point = new LatLng(lat, lng);
                             evacuationPoints.add(point);
-
-                            Marker marker = googleMap.addMarker(new MarkerOptions()
-                                    .position(point)
-                                    .title(name != null ? name : "未設定避難所")
-                                    .snippet(address != null ? address : "")
-                                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
-                            );
-
-                            if (marker != null) marker.setTag("evacuation");
                         }
                     }
 
@@ -468,6 +492,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                         break;
 
                                     case 2:
+                                        clearAllPolylines();
                                         drawRouteShortest(latLng);
                                         break;
 
@@ -777,8 +802,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         if (!passesThroughDanger(points, dangerPins, 50)) {
                             // 安全なら直ちに描画して終了
                             runOnUiThread(() -> {
-                                googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
-                                        .addAll(points).width(12).color(android.graphics.Color.MAGENTA).geodesic(true));
+                                com.google.android.gms.maps.model.Polyline poly = googleMap.addPolyline(
+                                        new com.google.android.gms.maps.model.PolylineOptions()
+                                                .addAll(points)
+                                                .width(12)
+                                                .color(android.graphics.Color.MAGENTA)
+                                                .geodesic(true)
+                                );
+                                currentPolylines.add(poly);
                             });
                             return;
                         }
@@ -819,8 +850,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     // 返ってきたルートが危険ピンと被らなければ採用して終了
                     if (!passesThroughDanger(points, dangerPins, 50)) {
                         runOnUiThread(() -> {
-                            googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
-                                    .addAll(points).width(12).color(android.graphics.Color.MAGENTA).geodesic(true));
+                            com.google.android.gms.maps.model.Polyline poly = googleMap.addPolyline(
+                                    new com.google.android.gms.maps.model.PolylineOptions()
+                                            .addAll(points)
+                                            .width(12)
+                                            .color(android.graphics.Color.MAGENTA)
+                                            .geodesic(true)
+                            );
+                            currentPolylines.add(poly);
                         });
                         return;
                     }
@@ -911,7 +948,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             allCandidates.addAll(generateCircularCandidates(dangerCenter, candidateRadius, candidateCount));
                         }
 
-                        tryRouteDirectThenCandidates(origin, destination, allCandidates, 30, dangerPins);
+                        tryRouteDirectThenCandidates(origin, destination, allCandidates, 15, dangerPins);
                     }
                 });
     }
@@ -998,12 +1035,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             runOnUiThread(() -> {
 
                 //実際のUI操作（経路の表示)
-                googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
-                        .addAll(points)
-                        .width(12)//←線の太さ
-                        .color(android.graphics.Color.BLUE) // 線の色
-                        .geodesic(true)//曲面に沿った自然な線にする
+                com.google.android.gms.maps.model.Polyline poly = googleMap.addPolyline(
+                        new com.google.android.gms.maps.model.PolylineOptions()
+                                .addAll(points)
+                                .width(12)
+                                .color(android.graphics.Color.MAGENTA)
+                                .geodesic(true)
                 );
+                currentPolylines.add(poly);
             });
 
         } catch (Exception e) {
@@ -1107,7 +1146,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.w("TAG", "docId を保存できませんでした（tag が不明）");
     }
     private void loadShelters() {
-        db.collection("shelters").get().addOnSuccessListener(query -> {
+        db.collection("test_shelters").get().addOnSuccessListener(query -> {
             for (DocumentSnapshot doc : query) {
                 String docId = doc.getId();
                 String name = doc.getString("name");
@@ -1119,7 +1158,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 Marker marker = googleMap.addMarker(new MarkerOptions()
                         .position(position)
-                        .title(name));
+                        .title(name)
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
 
                 marker.setTag(new Shelter(
                         docId,
@@ -1133,4 +1173,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         });
     }
+
+
+    // ルート削除（複数可）関数
+    private void clearAllPolylines() {
+        for (Polyline p : currentPolylines) {
+            p.remove(); // 地図から削除
+        }
+        currentPolylines.clear(); // リストもクリア
+    }
+
 }
