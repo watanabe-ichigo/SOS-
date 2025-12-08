@@ -473,9 +473,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onMapReady(GoogleMap map) {
-
-        googleMap = map; // ← これを最初に置くのが絶対
-        loadShelters();
+        googleMap = map; // ★ ここで一度設定すれば十分なのだ
+        loadShelters(); // 避難所をロード (非同期)
 
         // --- タップでメニュー表示 ---
         googleMap.setOnMapClickListener(latLng -> {
@@ -485,10 +484,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             (dialog, which) -> {
                                 switch (which) {
                                     case 0:
+                                        // type=1L (赤ピン)
                                         addPin(latLng, userName, 1);
                                         break;
 
                                     case 1:
+                                        // type=2L (緑ピン)
                                         addPin(latLng, userName, 2);
                                         break;
 
@@ -507,92 +508,49 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // --- 現在地 ---
         setCurrentLocationMarker();
 
-        List<String> evacuationNames = new ArrayList<>();
-
-        // ループでマーカー作成
-        for (int i = 0; i < evacuationPoints.size(); i++) {
-            LatLng point = evacuationPoints.get(i);
-            String name = evacuationNames.get(i);
-
-            Marker marker = googleMap.addMarker(new MarkerOptions()
-                    .position(point)
-                    .title(name)
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
-            );
-
-            // 必要なら tag をセット
-            if (marker != null) {
-                marker.setTag("evacuation");
-            }
-        }
+        // 以前あったevacuationPoints/evacuationNamesの同期的なマーカー作成ループは、
+        // loadShelters()と重複・競合するため削除したのだ。
+        // loadShelters()が避難所マーカーを作成するのだ。
 
         // --- Firestore 読み込み ---
-        loadPinsFromFirestore();
+        loadPinsFromFirestore(); // ★ ピンをロード。一度の呼び出しで十分なのだ。
 
         // --- マーカークリックメニュー ---
         googleMap.setOnMarkerClickListener(marker -> {
             selectedMarker = marker;
             saveSelectedDocId(marker);
             Object tag = marker.getTag();
+
+            // 避難所（Shelter）の処理なのだ
             if (tag instanceof Shelter) {
                 Shelter s = (Shelter) tag;
+                txtName.setText(s.name);
+                txtAddress.setText(s.address);
+                txtType.setText(s.type);
 
-                // --- name ---
-                if (s.name != null && !s.name.isEmpty()) {
-                    txtName.setText(s.name);
-                    txtName.setVisibility(View.VISIBLE);
-                } else {
-                    txtName.setVisibility(View.GONE);
-                }
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
 
-                // --- address ---
-                if (s.address != null && !s.address.isEmpty()) {
-                    txtAddress.setText(s.address);
-                    txtAddress.setVisibility(View.VISIBLE);
-                } else {
-                    txtAddress.setVisibility(View.GONE);
-                }
-
-                // --- type ---
-                if (s.type != null && !s.type.isEmpty()) {
-                    txtType.setText(s.type);
-                    txtType.setVisibility(View.VISIBLE);
-                } else {
-                    txtType.setVisibility(View.GONE);
-                }
-
-
-                //txtName.setText(s.name);
-                //txtAddress.setText(s.address);
-                //txtType.setText(s.type);
+                // 🔥 ユーザーピン（PinInfo）の処理を追加するのだ
+            } else if (tag instanceof PinInfo) {
+                PinInfo info = (PinInfo) tag;
+                txtName.setText(info.name);
+                // ユーザーピンには住所がないため、座標か空にするのだ
+                txtAddress.setText(String.format("Lat: %.5f, Lng: %.5f", info.lat, info.lng));
+                txtType.setText(info.typeName); // typeNameは"危険エリア"などが入っているのだ
 
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
             }
-            else if (tag instanceof PinInfo) {
-                PinInfo p = (PinInfo) tag;
-                txtName.setText(p.typeName);  // ピンの種類を表示
-                txtAddress.setText(p.name);
-                txtType.setText("タイプ: " + p.type);
-                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-            }
 
-            return false; // InfoWindow を開きたい場合
-
+            return false; // InfoWindow を開きたい場合 (ここは変えないのだ)
         });
-
-// --- 権限あるなら位置更新 ---
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED) {
-            startLocationUpdates();
-        }
 
         googleMap.setOnInfoWindowClickListener(marker -> {
-
+            // 何か処理をするならここに書くのだ
         });
-
 
 
         // --- 権限あるなら位置更新 ---
+        // ★ 冗長な記述を削除し、一度だけ実行するのだ
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
             startLocationUpdates();
@@ -649,7 +607,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Double lng = doc.getDouble("lng_y");
                         String name = doc.getString("name");
                         Long type = doc.getLong("type");
-                        String docId = doc.getId();
+                        String docId = doc.getId(); // docIdを取得するのだ
 
                         if (lat != null && lng != null) {
                             LatLng pinPosition = new LatLng(lat, lng);
@@ -671,19 +629,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                             if (marker != null) {
                                 // type は String でも int でも OK（必要に応じて統一）
-                                String typeName = (type == 1) ? "危険エリア（赤ピン）" : "安全エリア（緑ピン）";
+                                String typeName = (type != null && type == 1) ?
+                                        "危険エリア（赤ピン）" : "安全エリア（緑ピン）";
 
+                                // PinInfoクラスを使ってタグ付けをするのだ。
                                 PinInfo info = new PinInfo(
-                                        //住所やname欄を無理やり流用中（データクラス作るのめんどい）
-                                        docId, // docId
+                                        docId, // docId [cite: 135]
                                         typeName,
-                                        name,
+                                        name, // nameをPinInfoのnameに設定
                                         type, // type にピンの種類を代入
                                         lat,
                                         lng
                                 );
 
-                                marker.setTag(info);
+                                marker.setTag(info); // PinInfoをタグとしてセット
+                                allMarkers.add(marker); // 🔥 allMarkersにマーカーを追加するのだ
                             }
                         }
                     }
@@ -945,35 +905,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         // dangerPinsを同期的に作る
         List<LatLng> dangerPins = new ArrayList<>();
-        for (Marker m : allMarkers) {
+        for (Marker m : allMarkers) { // allMarkers には Firestore からロードされたピンも含まれているはずなのだ。
             Object tag = m.getTag();
-            if (tag instanceof PinInfo) {
-
+            if (tag instanceof PinInfo) { // PinInfoを持っているピンのみをチェックなのだ
                 PinInfo info = (PinInfo) tag;
-                Log.d("PinDebug", "PinInfo: type=" + info.getType() +
-                        " / position=" + m.getPosition());
 
-
+                // PinInfoのtypeを安全にLongとして取得するのだ
                 Object raw = info.getType();
                 Long type = null;
-
-                if (raw instanceof Long) {
-                    type = (Long) raw;
-                } else if (raw instanceof Double) {
-                    type = ((Double) raw).longValue();
-                } else if (raw instanceof Integer) {
-                    type = ((Integer) raw).longValue();
+                if (raw instanceof Number) {
+                    type = ((Number) raw).longValue(); // NumberであればlongValueで統一するのだ
                 }
 
-                if (type != null && type == 1L) { // 赤ピン
+                // もし赤ピン（type == 1L）ならば、危険エリアに追加するのだ
+                if (type != null && type == 1L) { // 赤ピンのIDが1であるという前提なのだ
                     dangerPins.add(m.getPosition());
-                }
-                else if(type == null) {
-                    // ← ★ type が null の場合の処理を書く
-                    Log.d("PinCheck", "type が null のマーカーです: " + m.getPosition());
-                    continue; // null のときは赤ピン扱いしない → 次へ
+                    Log.d("RouteAvoid", "危険ピンを検出したのだ: " + m.getPosition());
                 }
             }
+            // 注意: loadSheltersでセットされるShelterタグは危険ピンの対象外と仮定するのだ
         }
 
         // 現在地取得
