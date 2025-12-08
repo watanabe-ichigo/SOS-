@@ -83,8 +83,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private final Object routeLock = new Object(); // スレッド安全のため
     private Marker selectedMarker = null;
     private String selectedDocId = null;
+    //経路リスト
     private List<com.google.android.gms.maps.model.Polyline> currentPolylines = new ArrayList<>();
-
 
 
 
@@ -129,17 +129,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         successfulRouteCount = 0;
                         finishedRouteCount = 0;
                     })
-                    .setNegativeButton("安全経由ルート", (dialog, which) -> {
-                        // 安全ルートの処理をここに追加
-                        clearAllPolylines();
-                    })
                     .setNeutralButton("最短ルート", (dialog, which) -> {
-                        // 例: 最短ルート
                         clearAllPolylines();
+
+                        // 例: 最短ルート
                         drawRouteShortest(new LatLng(37.39830881, 140.35796203));
                         drawRouteShortest(new LatLng(37.376782, 140.392777));     // 東部体育館
                         drawRouteShortest(new LatLng(37.36942367, 140.37393403)); // ビッグパレット
                         drawRouteShortest(new LatLng(37.419631, 140.390504));     // 富久山公民館
+                    })
+                    .setNegativeButton("ルートリセット", (dialog, which) -> {
+                        clearAllPolylines();
                     })
                     .show();
         });
@@ -163,7 +163,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             deletePin(selectedMarker, selectedDocId);
         });
 
-        loadShelters();
+
         setupBottomSheet();
 
 
@@ -475,6 +475,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onMapReady(GoogleMap map) {
 
         googleMap = map; // ← これを最初に置くのが絶対
+        loadShelters();
 
         // --- タップでメニュー表示 ---
         googleMap.setOnMapClickListener(latLng -> {
@@ -530,15 +531,48 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // --- マーカークリックメニュー ---
         googleMap.setOnMarkerClickListener(marker -> {
-            selectedMarker = marker;  // ★これだけでOK
+            selectedMarker = marker;
             saveSelectedDocId(marker);
             Object tag = marker.getTag();
             if (tag instanceof Shelter) {
                 Shelter s = (Shelter) tag;
-                txtName.setText(s.name);
-                txtAddress.setText(s.address);
-                txtType.setText(s.type);
 
+                // --- name ---
+                if (s.name != null && !s.name.isEmpty()) {
+                    txtName.setText(s.name);
+                    txtName.setVisibility(View.VISIBLE);
+                } else {
+                    txtName.setVisibility(View.GONE);
+                }
+
+                // --- address ---
+                if (s.address != null && !s.address.isEmpty()) {
+                    txtAddress.setText(s.address);
+                    txtAddress.setVisibility(View.VISIBLE);
+                } else {
+                    txtAddress.setVisibility(View.GONE);
+                }
+
+                // --- type ---
+                if (s.type != null && !s.type.isEmpty()) {
+                    txtType.setText(s.type);
+                    txtType.setVisibility(View.VISIBLE);
+                } else {
+                    txtType.setVisibility(View.GONE);
+                }
+
+
+                //txtName.setText(s.name);
+                //txtAddress.setText(s.address);
+                //txtType.setText(s.type);
+
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            }
+            else if (tag instanceof PinInfo) {
+                PinInfo p = (PinInfo) tag;
+                txtName.setText(p.typeName);  // ピンの種類を表示
+                txtAddress.setText(p.name);
+                txtType.setText("タイプ: " + p.type);
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
             }
 
@@ -564,7 +598,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             startLocationUpdates();
         }
     }
-    private void addPin(LatLng pos, String userName, int type) {
+    private void addPin(LatLng pos, String userName, long type) {
 
         Map<String, Object> pinData = new HashMap<>();
         pinData.put("lat_x", pos.latitude);
@@ -589,12 +623,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
                     if (marker != null) {
-                        // 修正点：TagにDocument IDと type を持つ HashMap を設定する
-                        Map<String, Object> tagData = new HashMap<>();
-                        tagData.put("docId", docRef.getId());
-                        tagData.put("type", (long)type); // long型にキャストして合わせる
+                        // type は String でも int でも OK（必要に応じて統一）
+                        String typeName = (type == 1) ? "危険エリア（赤ピン）" : "安全エリア（緑ピン）";
 
-                        marker.setTag(tagData);
+                        PinInfo info = new PinInfo(
+                                //住所やname欄を無理やり流用中（データクラス作るのめんどい）
+                                docRef.getId(), // docId
+                                typeName,
+                                userName,
+                                type, // type にピンの種類を代入
+                                pos.latitude,
+                                pos.longitude
+                        );
+
+                        marker.setTag(info);
                     }
                 });
     }
@@ -607,6 +649,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Double lng = doc.getDouble("lng_y");
                         String name = doc.getString("name");
                         Long type = doc.getLong("type");
+                        String docId = doc.getId();
 
                         if (lat != null && lng != null) {
                             LatLng pinPosition = new LatLng(lat, lng);
@@ -627,12 +670,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             );
 
                             if (marker != null) {
-                                Map<String, Object> tagData = new HashMap<>();
-                                tagData.put("docId", doc.getId());
-                                tagData.put("type", type);
+                                // type は String でも int でも OK（必要に応じて統一）
+                                String typeName = (type == 1) ? "危険エリア（赤ピン）" : "安全エリア（緑ピン）";
 
-                                marker.setTag(tagData);
-                                allMarkers.add(marker);
+                                PinInfo info = new PinInfo(
+                                        //住所やname欄を無理やり流用中（データクラス作るのめんどい）
+                                        docId, // docId
+                                        typeName,
+                                        name,
+                                        type, // type にピンの種類を代入
+                                        lat,
+                                        lng
+                                );
+
+                                marker.setTag(info);
                             }
                         }
                     }
@@ -698,35 +749,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         );
     }
 
-    // --- Firestore にピン保存（赤=1, 緑=2） ---
-    private void savePinToFirestore ( double lat, double lng, String userName,int type){
 
-        db.collection("pins")
-                .orderBy("id", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                .limit(1)
-                .get()
-                .addOnSuccessListener(querySnapshot -> {
-
-                    long newId = 1;
-                    if (!querySnapshot.isEmpty()) {
-                        long lastId = querySnapshot.getDocuments().get(0).getLong("id");
-                        newId = lastId + 1;
-                    }
-
-                    Map<String, Object> pinData = new HashMap<>();
-                    pinData.put("id", newId);
-                    pinData.put("lat_x", lat);
-                    pinData.put("lng_y", lng);
-                    pinData.put("name", userName);
-                    pinData.put("type", type);
-
-                    db.collection("pins")
-                            .add(pinData)
-                            .addOnSuccessListener(docRef -> Log.d("Firestore", "ピン保存成功: " + docRef.getId()))
-                            .addOnFailureListener(e -> Log.w("Firestore", "ピン保存失敗", e));
-
-                });
-    }
 
     //最短ルートが押された時に呼び出されるルート検索関数
     private void drawRouteShortest(LatLng destination) {
@@ -802,13 +825,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         if (!passesThroughDanger(points, dangerPins, 50)) {
                             // 安全なら直ちに描画して終了
                             runOnUiThread(() -> {
-                                com.google.android.gms.maps.model.Polyline poly = googleMap.addPolyline(
-                                        new com.google.android.gms.maps.model.PolylineOptions()
-                                                .addAll(points)
-                                                .width(12)
-                                                .color(android.graphics.Color.MAGENTA)
-                                                .geodesic(true)
+                                com.google.android.gms.maps.model.Polyline poly = googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
+                                        .addAll(points)
+                                        .width(12)
+                                        .color(android.graphics.Color.MAGENTA)
+                                        .geodesic(true)
                                 );
+
                                 currentPolylines.add(poly);
                             });
                             return;
@@ -850,12 +873,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     // 返ってきたルートが危険ピンと被らなければ採用して終了
                     if (!passesThroughDanger(points, dangerPins, 50)) {
                         runOnUiThread(() -> {
-                            com.google.android.gms.maps.model.Polyline poly = googleMap.addPolyline(
-                                    new com.google.android.gms.maps.model.PolylineOptions()
-                                            .addAll(points)
-                                            .width(12)
-                                            .color(android.graphics.Color.MAGENTA)
-                                            .geodesic(true)
+                            com.google.android.gms.maps.model.Polyline poly = googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
+                                    .addAll(points)
+                                    .width(12)
+                                    .color(android.graphics.Color.MAGENTA)
+                                    .geodesic(true)
                             );
                             currentPolylines.add(poly);
                         });
@@ -925,11 +947,31 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         List<LatLng> dangerPins = new ArrayList<>();
         for (Marker m : allMarkers) {
             Object tag = m.getTag();
-            if (tag instanceof Map) {
-                Map<String, Object> tagData = (Map<String, Object>) tag;
-                Long type = (Long) tagData.get("type");
-                if (type != null && type == 1) { // 赤ピン
+            if (tag instanceof PinInfo) {
+
+                PinInfo info = (PinInfo) tag;
+                Log.d("PinDebug", "PinInfo: type=" + info.getType() +
+                        " / position=" + m.getPosition());
+
+
+                Object raw = info.getType();
+                Long type = null;
+
+                if (raw instanceof Long) {
+                    type = (Long) raw;
+                } else if (raw instanceof Double) {
+                    type = ((Double) raw).longValue();
+                } else if (raw instanceof Integer) {
+                    type = ((Integer) raw).longValue();
+                }
+
+                if (type != null && type == 1L) { // 赤ピン
                     dangerPins.add(m.getPosition());
+                }
+                else if(type == null) {
+                    // ← ★ type が null の場合の処理を書く
+                    Log.d("PinCheck", "type が null のマーカーです: " + m.getPosition());
+                    continue; // null のときは赤ピン扱いしない → 次へ
                 }
             }
         }
@@ -1035,12 +1077,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             runOnUiThread(() -> {
 
                 //実際のUI操作（経路の表示)
-                com.google.android.gms.maps.model.Polyline poly = googleMap.addPolyline(
-                        new com.google.android.gms.maps.model.PolylineOptions()
-                                .addAll(points)
-                                .width(12)
-                                .color(android.graphics.Color.MAGENTA)
-                                .geodesic(true)
+                com.google.android.gms.maps.model.Polyline poly   = googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
+                        .addAll(points)
+                        .width(12)//←線の太さ
+                        .color(android.graphics.Color.BLUE) // 線の色
+                        .geodesic(true)//曲面に沿った自然な線にする
                 );
                 currentPolylines.add(poly);
             });
@@ -1159,7 +1200,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Marker marker = googleMap.addMarker(new MarkerOptions()
                         .position(position)
                         .title(name)
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)));
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
 
                 marker.setTag(new Shelter(
                         docId,
@@ -1172,7 +1213,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
 
         });
+
     }
+
 
 
     // ルート削除（複数可）関数

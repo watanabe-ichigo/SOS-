@@ -2,11 +2,12 @@ package com.example.sosbaton;
 
 public class PinInfo {
     public String docId;
+
     public String name;
     public String typeName;
     public double lat;
     public double lng;
-    public Long type;
+    public long type;
 
 
 
