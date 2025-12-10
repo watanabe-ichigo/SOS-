@@ -57,7 +57,10 @@ public class SosActivity extends AppCompatActivity {
                     startDial119();
                     sendLocationToPinsCollection(1); // type = 1 → SOS
                 })
-                .setNegativeButton("キャンセル", null)
+                .setNegativeButton("キャンセル", (dialog, which) -> {
+                    // キャンセルでも電話をかける
+                    startDial119();
+                })
                 .show();
     }
 
@@ -68,9 +71,12 @@ public class SosActivity extends AppCompatActivity {
                 .setMessage("第三者に位置情報を共有しますか？")
                 .setPositiveButton("OK", (dialog, which) -> {
                     startDial110();
-                    sendLocationToPinsCollection(2); // type = 2 → 110
+                    sendLocationToPinsCollection(1); // type = 2 → 110
                 })
-                .setNegativeButton("キャンセル", null)
+                .setNegativeButton("キャンセル", (dialog, which) -> {
+                    // キャンセルでも電話
+                    startDial110();
+                })
                 .show();
     }
 

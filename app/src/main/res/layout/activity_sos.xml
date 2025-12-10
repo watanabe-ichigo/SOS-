@@ -100,22 +100,19 @@
             android:layout_marginRight="30dp"/>
     </LinearLayout>
 
-
-    <!-- 履歴ボタン -->
-    <Button
-        android:id="@+id/TransmissionButton"
-        android:layout_width="229dp"
-        android:layout_height="101dp"
-        android:background="@drawable/rectangle"
-        android:backgroundTint="#000"
-        android:text="履歴"
-        android:textColor="@android:color/white"
-        android:textSize="40sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+    <TextView
+        android:id="@+id/comment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="516dp"
+        android:text="※警察または消防・救急ボタンをタップすると電話アプリに遷移します"
+        android:textColor="#000"
+        android:textSize="22sp"
+        android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.86" />
+        app:layout_constraintTop_toTopOf="parent" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>
