@@ -11,33 +11,24 @@
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:id="@+id/main_content"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:fitsSystemWindows="true">
 
-        <!-- Toolbar -->
 
-        <!-- MapView -->
-
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:layout_marginTop="40dp"
-            android:background="#F66B6B"
-            android:translationZ="30dp"
-            app:title="マップ画面"
-            app:titleTextColor="@android:color/white" />
 
         <com.google.android.gms.maps.MapView
             android:id="@+id/mapView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_marginTop="?attr/actionBarSize" />
+            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-        <!-- 避難ボタン（アンカーを削除して margin-bottom で固定） -->
-
-        <!-- 下メニュー（アンカー削除 → layout_gravity で貼り付け） -->
-
-        <!-- BottomSheet（正しく behavior を付ける） -->
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="#F66B6B"
+            app:title="マップ画面"
+            app:titleTextColor="@android:color/white" />
 
         <LinearLayout
             android:id="@+id/bottom_menu"
@@ -84,7 +75,6 @@
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
-    <!-- Drawer -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         android:layout_width="280dp"

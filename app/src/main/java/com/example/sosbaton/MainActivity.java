@@ -220,10 +220,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
 
         } else {
-            // 誰もログインしていないのだ！
+            // 誰もログインしていない
             Log.d(TAG, "ログインが必要です。");
             Toast.makeText(this, "ゲストモードでは、一部機能の利用が制限されます。", Toast.LENGTH_LONG).show();
-            // ログイン画面へ誘導するのだ。
+            // ログイン画面へ誘導する
         }
 
 
