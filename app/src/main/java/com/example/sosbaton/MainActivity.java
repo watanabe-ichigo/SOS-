@@ -1124,14 +1124,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
 
-        if (tag instanceof Map) {
-            Object id = ((Map<?, ?>) tag).get("docId");
-            if (id != null) {
-                selectedDocId = id.toString();
-                Log.d("TAG", "UserPin docId を保存: " + selectedDocId);
-                return;
-            }
+        if (tag instanceof PinInfo) {
+            PinInfo p = (PinInfo) tag;
+            selectedDocId = p.docId;
+            Log.d("TAG", "Shelter docId を保存: " + selectedDocId);
+            return;
         }
+        
 
         selectedDocId = null;
         Log.w("TAG", "docId を保存できませんでした（tag が不明）");
