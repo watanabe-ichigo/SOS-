@@ -37,7 +37,9 @@
             android:layout_gravity="bottom"
             android:background="#DDFFFFFF"
             android:gravity="center"
-            android:orientation="horizontal">
+            android:orientation="horizontal"
+            android:paddingBottom="0dp"
+            android:layout_marginBottom="-24dp">
 
             <ImageButton
                 android:id="@+id/btn_pin"
