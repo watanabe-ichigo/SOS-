@@ -36,7 +36,7 @@ public class ProfileActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private FirebaseFirestore db;
 
-    private TextView tvUserNameTop, tvValueName, tvValueEmail;
+    private TextView tvUserNameTop, tvValueName, tvValueEmail, tvValuePassword;
 
     private FirebaseStorage storage;
     private ImageView imageUserIcon;
@@ -60,6 +60,7 @@ public class ProfileActivity extends AppCompatActivity {
         tvUserNameTop = findViewById(R.id.tvUserNameTop);
         tvValueName = findViewById(R.id.tvValueName);
         tvValueEmail = findViewById(R.id.tvValueEmail);
+        tvValuePassword = findViewById(R.id.tvValuePassword);
 
         // Edit ボタン
         ImageView btnEditName = findViewById(R.id.btnEditName);
@@ -86,6 +87,7 @@ public class ProfileActivity extends AppCompatActivity {
         String uid = user.getUid();
 
         tvValueEmail.setText(email);
+        tvValuePassword.setText("●●●●●●●●");
 
         db.collection("users").document(uid)
                 .get()
