@@ -566,7 +566,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
             new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
                     .setTitle("ここで何をする？")
-                    .setItems(new CharSequence[]{"赤ピン", "緑ピン", "ここへ行く", "キャンセル"},
+                    .setItems(new CharSequence[]{"危険(赤ピン)", "安全(緑ピン)", "ここへ行く", "キャンセル"},
                             (dialog, which) -> {
                                 switch (which) {
                                     case 0:
@@ -672,7 +672,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     areaMarker = googleMap.addMarker(new MarkerOptions()
                             .position(pos)
-                            .title(type == 1 ? "赤ピン" : "緑ピン")
+                            .title(type == 1 ? "危険エリア" : "安全エリア")
                             .icon(BitmapDescriptorFactory.defaultMarker(color))
                     );
                     allMarkers.add(areaMarker);
@@ -682,7 +682,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     if (areaMarker != null) {
                         // type は String でも int でも OK（必要に応じて統一）
-                        String typeName = (type == 1) ? "危険エリア（赤ピン）" : "安全エリア（緑ピン）";
+                        String typeName = (type == 1) ? "危険エリア" : "安全エリア";
 
                         PinInfo info = new PinInfo(
                                 docRef.getId(), // docId
@@ -729,7 +729,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             if (marker != null) {
                                 // type は String でも int でも OK（必要に応じて統一）
                                 String typeName = (type != null && type == 1) ?
-                                        "危険エリア（赤ピン）" : "安全エリア（緑ピン）";
+                                        "危険エリア" : "安全エリア";
 
                                 // PinInfoクラスを使ってタグ付けをするのだ。
                                 PinInfo info = new PinInfo(
