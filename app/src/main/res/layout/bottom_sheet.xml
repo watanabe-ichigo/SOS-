@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/bottomSheetLayout"
     android:layout_width="match_parent"
-    android:layout_height="400dp"
+    android:layout_height="300dp"
     android:background="@color/white"
     app:behavior_hideable="true"
     app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
@@ -27,21 +27,24 @@
         app:layout_constraintTop_toBottomOf="@id/txtTitle" />
 
 
-    <ScrollView
+    <androidx.core.widget.NestedScrollView
         android:id="@+id/shelterInfoScroll"
-        android:layout_width="412dp"
-        android:layout_height="97dp"
-        android:layout_marginBottom="48dp"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:scrollbars="vertical"
         android:paddingStart="16dp"
         android:paddingTop="8dp"
         android:paddingEnd="16dp"
-        app:layout_constraintBottom_toTopOf="@+id/btngo"
-        tools:layout_editor_absoluteX="0dp">
+        app:layout_constraintTop_toBottomOf="@id/divider"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
             android:id="@+id/shelterInfoContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:paddingBottom="24dp"
             android:orientation="vertical">
 
             <TextView
@@ -74,28 +77,47 @@
                 android:text="種別"
                 android:textColor="#333333"
                 android:textSize="16sp" />
+            <Button
+                android:id="@+id/btngo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#F66B6B"
+                android:text="ここへいく"
+                />
+
+            <Button
+                android:id="@+id/btndelete"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#F66B6B"
+                android:text="削除"
+                />
+
+            <Button
+                android:id="@+id/btnchat"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#F66B6B"
+                android:text="伝言掲示板＆チャット"
+                />
+
+            <Button
+                android:id="@+id/btnback"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#F66B6B"
+                android:text="閉じる"
+                />
+
+
 
         </LinearLayout>
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 
-    <Button
-        android:id="@+id/btngo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:backgroundTint="#F66B6B"
-        android:text="ココへ行く"
-        app:layout_constraintBottom_toTopOf="@+id/btndelete"
-        tools:layout_editor_absoluteX="0dp" />
 
-    <Button
-        android:id="@+id/btndelete"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="68dp"
-        android:backgroundTint="#F66B6B"
-        android:text="削除"
-        app:layout_constraintBottom_toBottomOf="parent"
-        tools:layout_editor_absoluteX="1dp" />
+
+
+
 
     <Button
         android:id="@+id/Close"
@@ -112,6 +134,6 @@
         android:layout_marginEnd="8dp"
         android:minWidth="0dp"
         android:minHeight="0dp"
-    />
+        />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

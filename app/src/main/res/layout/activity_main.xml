@@ -30,10 +30,23 @@
             app:title="マップ画面"
             app:titleTextColor="@android:color/white" />
 
+        <Button
+            android:id="@+id/btncurrent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end|top"
+            android:layout_marginTop="?attr/actionBarSize"
+            android:layout_marginEnd="16dp"
+            android:backgroundTint="#F66B6B"
+            android:drawableLeft="@android:drawable/ic_menu_myplaces"
+            android:foregroundTint="#FBF6F6"
+            android:text="現在地"
+            android:textColor="#FBEBEB" />
+
         <LinearLayout
             android:id="@+id/bottom_menu"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="100dp"
             android:layout_gravity="bottom"
             android:background="#DDFFFFFF"
             android:gravity="center"
@@ -64,10 +77,11 @@
                 android:layout_width="0dp"
                 android:layout_height="80dp"
                 android:layout_weight="1"
+                android:adjustViewBounds="true"
                 android:background="@android:color/transparent"
                 android:scaleType="fitCenter"
-                android:adjustViewBounds="true"
-                android:src="@mipmap/telephone" />
+                android:padding="15dp"
+                android:src="@drawable/call" />
         </LinearLayout>
 
         <include
