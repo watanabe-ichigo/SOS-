@@ -49,6 +49,11 @@ import com.google.android.gms.maps.model.Polyline;
 import com.google.firebase.Timestamp;
 import android.view.Gravity;
 import androidx.core.widget.NestedScrollView;
+import com.google.android.gms.maps.model.LatLngBounds;
+import android.os.Handler;
+import android.os.Looper;
+
+
 
 
 
@@ -209,17 +214,41 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
         //現在地に戻る
         btncurrent.setOnClickListener(v->{
-            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
-            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,18));
-            myMarker.showInfoWindow();
+
+            if(current == null){
+                return;
+            }
+            else{
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+                googleMap.animateCamera(
+                        CameraUpdateFactory.newLatLngZoom(current, 15)
+                );
+                myMarker.showInfoWindow();
+            }
+
         });
 
 
         //ココへ行く
         btngo.setOnClickListener(v -> {
             clearAllPolylines();
+            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
             drawRouteShortest(selectedMarker.getPosition());
-            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,20));
+            LatLngBounds bounds = new LatLngBounds.Builder()
+                    .include(current)
+                    .include(selectedMarker.getPosition())
+                    .build();
+
+            googleMap.animateCamera(
+                    CameraUpdateFactory.newLatLngBounds(bounds, 100)
+            );
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                googleMap.animateCamera(
+                        CameraUpdateFactory.newLatLngZoom(current, 15)
+                );
+            }, 3000);
+
+
         });
         //削除
         btndelete.setOnClickListener(v->{
@@ -566,7 +595,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
             new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
                     .setTitle("ここで何をする？")
-                    .setItems(new CharSequence[]{"危険(赤ピン)", "安全(緑ピン)", "ここへ行く", "キャンセル"},
+                    .setItems(new CharSequence[]{"赤ピン", "緑ピン", "ここへ行く", "キャンセル"},
                             (dialog, which) -> {
                                 switch (which) {
                                     case 0:
@@ -609,32 +638,96 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             saveSelectedDocId(marker);
             Object tag = marker.getTag();
 
-            // 避難所（Shelter）の処理なのだ
-            if (tag instanceof Shelter) {
+
+            if (tag instanceof Shelter) {//避難所ピン
                 Shelter s = (Shelter) tag;
-                txtName.setText(s.name);
-                txtAddress.setText(s.address);
+                //テキスト変更箇所
+                txtTitle.setText("避難所情報");
+                txtName.setText("場所:　"+s.name);
+                txtAddress.setText("住所:　"+s.address);
                 txtType.setText(s.type);
+                //カメラズーム
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(position,15));
+                //ボトムシート展開
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
-                // 避難所データには削除ボタンを表示しない
+                //表示要素
+                txtName.setVisibility(View.VISIBLE);
+                txtAddress.setVisibility(View.VISIBLE);
+                txtType.setVisibility(View.VISIBLE);
+                //非表示要素
                 Button btndelete = findViewById(R.id.btndelete);
                 btndelete.setVisibility(View.GONE);
+                txttime.setVisibility(View.GONE);
+                txturgency.setVisibility(View.GONE);
+                txtsosCategory.setVisibility(View.GONE);
+                txtsupporttype.setVisibility(View.GONE);
 
-                // 🔥 ユーザーピン（PinInfo）の処理を追加するのだ
-            } else if (tag instanceof PinInfo) {
+
+            } else if (tag instanceof PinInfo) {//赤緑ピン
                 PinInfo info = (PinInfo) tag;
-                txtName.setText(info.name);
+                //テキスト変更箇所
+                txtName.setText("投稿者:　"+info.name);
                 txtTitle.setText("ピン情報");
-                // ユーザーピンには住所がないため、座標か空にするのだ
-                txtAddress.setText(String.format("Lat: %.5f, Lng: %.5f", info.lat, info.lng));
-                txtType.setText(info.typeName); // typeNameは"危険エリア"などが入っているのだ
-                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                txtType.setText(info.typeName);
+                //現状は住所の代わりに座標
+                txtAddress.setText("座標:　"+String.format("Lat: %.5f, Lng: %.5f", info.lat, info.lng));
+                //カメラズーム
                 LatLng pin = new LatLng(info.lat, info.lng);
                 googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pin,15));
-                // このデータクラスには削除ボタンを表示
+                //ボトムシート展開
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                //表示要素
                 Button btndelete = findViewById(R.id.btndelete);
                 btndelete.setVisibility(View.VISIBLE);
+                txtName.setVisibility(View.VISIBLE);
+                txtAddress.setVisibility(View.VISIBLE);
+                txtType.setVisibility(View.VISIBLE);
+                //非表示要素
+                txttime.setVisibility(View.GONE);
+                txturgency.setVisibility(View.GONE);
+                txtsosCategory.setVisibility(View.GONE);
+                txtsupporttype.setVisibility(View.GONE);
+
+            } else if (tag instanceof Sospin) {//sosピン
+                Sospin sos = (Sospin) tag;
+                //テキスト変更箇所
+                updateTimeAgo(sos.createdAt, txttime);
+                txtName.setText("投稿者:　"+sos.Uname);
+                txtsupporttype.setText(
+                        sos.supporttype == 1L ? "対応:　  通報要請":
+                                sos.supporttype == 2L ? "対応:　  見守り要請" :
+                                        sos.supporttype == 3L ? "対応:　  支援要請":
+                                                "不明"
+                );
+                txtsosCategory.setText(
+                        sos.sosCategory == 1L ? "状況: 　 体調不良" :
+                                sos.sosCategory == 2L ? "状況: 　 事故" :
+                                        sos.sosCategory == 3L ? "状況: 　 不審者":
+                                                "不明"
+                );
+                txturgency.setText(
+                        sos.urgency == 1L ? "緊急度:　高" :
+                                sos.urgency == 2L ? "緊急度:　中" :
+                                        sos.urgency == 3L ? "緊急度:　低":
+                                                "不明"
+                );
+                txtTitle.setText("sos情報");
+                //カメラズーム
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,15));
+                //ボトムシート展開
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+                //表示要素
+                txturgency.setVisibility(View.VISIBLE);
+                txtsosCategory.setVisibility(View.VISIBLE);
+                txtsupporttype.setVisibility(View.VISIBLE);
+                txtName.setVisibility(View.VISIBLE);
+                //非表示要素
+                Button btndelete = findViewById(R.id.btndelete);
+                btndelete.setVisibility(View.GONE);
+                txtAddress.setVisibility(View.GONE);
+                txtType.setVisibility(View.GONE);
+                txttime.setVisibility(View.VISIBLE);
+
             }
 
             return false; // InfoWindow を開きたい場合 (ここは変えないのだ)
@@ -672,7 +765,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     areaMarker = googleMap.addMarker(new MarkerOptions()
                             .position(pos)
-                            .title(type == 1 ? "危険エリア" : "安全エリア")
+                            .title(type == 1 ? "赤ピン" : "緑ピン")
                             .icon(BitmapDescriptorFactory.defaultMarker(color))
                     );
                     allMarkers.add(areaMarker);
@@ -682,7 +775,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     if (areaMarker != null) {
                         // type は String でも int でも OK（必要に応じて統一）
-                        String typeName = (type == 1) ? "危険エリア" : "安全エリア";
+                        String typeName = (type == 1) ? "危険エリア（赤ピン）" : "安全エリア（緑ピン）";
 
                         PinInfo info = new PinInfo(
                                 docRef.getId(), // docId
@@ -729,7 +822,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             if (marker != null) {
                                 // type は String でも int でも OK（必要に応じて統一）
                                 String typeName = (type != null && type == 1) ?
-                                        "危険エリア" : "安全エリア";
+                                        "危険エリア（赤ピン）" : "安全エリア（緑ピン）";
 
                                 // PinInfoクラスを使ってタグ付けをするのだ。
                                 PinInfo info = new PinInfo(
@@ -1219,22 +1312,34 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     //ボトムシートの開閉やスライド制御のインスタンス
     BottomSheetBehavior<View> bottomSheetBehavior;
 
-    TextView txtName, txtAddress, txtType,txtTitle;
+    TextView txtName, txtAddress, txtType,txtTitle,txttime,txtsupporttype,txtsosCategory,txturgency;
 
 
     private void setupBottomSheet() {
         View bottomSheet = findViewById(R.id.bottomSheet);
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
         bottomSheetBehavior.setDraggable(true);
+        //eventのやり取りができるスクロールコンテナ
         nestedScrollView = findViewById(R.id.shelterInfoScroll);
         nestedScrollView.setNestedScrollingEnabled(true);
+        //スクロールバー
+        nestedScrollView.setVerticalScrollBarEnabled(true); // 表示可能
+        nestedScrollView.setScrollbarFadingEnabled(false);    // フェードさせず常に表示
+        //表示要素
         txtName = findViewById(R.id.txtShelterName);
         txtAddress = findViewById(R.id.txtShelterAddress);
         txtType = findViewById(R.id.txtShelterType);
-        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
         txtTitle = findViewById(R.id.txtTitle);
-        nestedScrollView.setVerticalScrollBarEnabled(true); // 表示可能
-        nestedScrollView.setScrollbarFadingEnabled(false);    // フェードさせず常に表示
+        //最初は非表示(ボトムシート)
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+
+        //sosのみ
+        txttime = findViewById(R.id.txttime);
+        txturgency = findViewById(R.id.txturgency);
+        txtsosCategory = findViewById(R.id.txtsosCategory);
+        txtsupporttype = findViewById(R.id.txtsupporttype);
+
+        //event権限の分け合うロジック
         nestedScrollView.setOnScrollChangeListener(
                 new NestedScrollView.OnScrollChangeListener() {
                     @Override
@@ -1333,8 +1438,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 String docId = doc.getId();
                 //流用する場合は型変換
                 Long pinTypeLong = doc.getLong("pinType");
+                Long sosCategoryLong= doc.getLong("sosCategory");
+                Long urgencyLong = doc.getLong("urgency");
+                Long supporttypeLong = doc.getLong("supporttype");
                 Double lat = doc.getDouble("lat");
                 Double lng = doc.getDouble("lng");
+                String name = doc.getString("name");
                 Timestamp timestamp = doc.getTimestamp("createdAt");
                 LatLng sosposition = new LatLng(lat, lng);
 
@@ -1365,6 +1474,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 // 型変換(これで型の一致やLong型の流用が可能に
                 long type = pinTypeLong; // Long → long（アンボクシング）
+                long sosCategory = sosCategoryLong;
+                long urgency = urgencyLong;
+                long supporttype = supporttypeLong;
                 long createdAt = timestamp.toDate().getTime(); // Timestamp → long
 
 
@@ -1378,8 +1490,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         lat,
                         lng,
                         createdAt,
-                        docId
-
+                        docId,
+                        sosCategory,
+                        urgency,
+                        supporttype,
+                        name
                 ));
             }
 
@@ -1413,6 +1528,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     );
 
                     allMarkers.add(marker);
+                    marker.showInfoWindow();
 
 
                     if (marker != null) {
@@ -1434,6 +1550,25 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 });
 
+    }
+
+
+
+    //時間変更関数
+    public void updateTimeAgo(long createdAt, TextView txttime) {
+        long now = System.currentTimeMillis();
+        long diff = now - createdAt;
+
+        long minutes = diff / (1000 * 60);
+        long hours = diff / (1000 * 60 * 60);
+
+        String timeAgo;
+        if (minutes < 1) timeAgo = "たった今";
+        else if (minutes < 60) timeAgo = minutes + "分前";
+        else if (hours < 24) timeAgo = hours + "時間前";
+        else timeAgo = (hours / 24) + "日前";
+
+        txttime.setText("投稿日時:　"+timeAgo);
     }
 
 

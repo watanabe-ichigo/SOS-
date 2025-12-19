@@ -60,6 +60,18 @@
                 android:textStyle="bold" />
 
             <TextView
+                android:id="@+id/txttime"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:ellipsize="end"
+                android:maxLines="3"
+                android:text="分前"
+                android:textColor="#000000"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+            <TextView
                 android:id="@+id/txtShelterAddress"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -75,6 +87,34 @@
                 android:layout_marginTop="4dp"
                 android:paddingBottom="8dp"
                 android:text="種別"
+                android:textColor="#333333"
+                android:textSize="16sp" />
+            <TextView
+                android:id="@+id/txturgency"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:paddingBottom="8dp"
+                android:text="緊急性"
+                android:textColor="#333333"
+                android:textSize="16sp" />
+            <TextView
+                android:id="@+id/txtsosCategory"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:paddingBottom="8dp"
+                android:text="状況報告"
+                android:textColor="#333333"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/txtsupporttype"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:paddingBottom="8dp"
+                android:text="対処"
                 android:textColor="#333333"
                 android:textSize="16sp" />
             <Button
@@ -98,7 +138,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:backgroundTint="#F66B6B"
-                android:text="伝言掲示板＆チャット"
+                android:text="掲示板＆チャット"
                 />
 
             <Button
