@@ -54,6 +54,15 @@ import android.os.Handler;
 import android.os.Looper;
 
 
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
+import androidx.core.content.ContextCompat;
+import android.content.Context;              // ← 必須
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 
 
 
@@ -105,6 +114,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private boolean isSosActive = false; // 初期値は false
 
     private NestedScrollView nestedScrollView;
+
+
+    private Circle blueDot;
+    private Circle accuracyCircle;
 
 
 
@@ -747,6 +760,35 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             startLocationUpdates();
         }
     }
+
+    private BitmapDescriptor bitmapDescriptorFromVector(
+            Context context,
+            int vectorResId
+    ) {
+        Drawable drawable = ContextCompat.getDrawable(context, vectorResId);
+        if (drawable == null) return null;
+
+        int size = 100;
+
+        drawable.setBounds(
+                0,
+                0,
+                drawable.getIntrinsicWidth(),
+                drawable.getIntrinsicHeight()
+        );
+
+        Bitmap bitmap = Bitmap.createBitmap(
+                size,
+                size,
+                Bitmap.Config.ARGB_8888
+        );
+
+        Canvas canvas = new Canvas(bitmap);
+        drawable.draw(canvas);
+
+        return BitmapDescriptorFactory.fromBitmap(bitmap);
+    }
+
     private void addPin(LatLng pos, String userName, long type) {
 
         Map<String, Object> pinData = new HashMap<>();
@@ -864,10 +906,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 public void onLocationResult(com.google.android.gms.location.LocationResult locationResult) {
                     if (locationResult == null) return;
 
+                    Location loc = locationResult.getLastLocation();
+                    if (loc == null) return;
+
+                    LatLng pos = new LatLng(
+                            loc.getLatitude(),
+                            loc.getLongitude()
+                    );
                     android.location.Location location = locationResult.getLastLocation();
                     current = new LatLng(location.getLatitude(), location.getLongitude());
 
-                    if (myMarker == null) {
+                    /*if (myMarker == null) {
                         myMarker = googleMap.addMarker(
                                 new MarkerOptions()
                                         .position(current)
@@ -876,6 +925,39 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         );
 
 
+                    } else {
+                        myMarker.setPosition(current);
+                    }*/
+                    if (myMarker == null) {
+                        myMarker = googleMap.addMarker(
+                                new MarkerOptions()
+                                        .position(pos)
+                                        .title("現在地")
+                                        .icon(bitmapDescriptorFromVector(MainActivity.this, R.drawable.person))
+                                        .anchor(0.5f, 1.0f) // 足元を座標に
+                                        .flat(true)
+                        );
+
+                        // 青丸（中心）
+                        /*blueDot = googleMap.addCircle(
+                                new CircleOptions()
+                                        .center(pos)
+                                        .radius(6) // メートル
+                                        .fillColor(0xFF007AFF)
+                                        .strokeWidth(0)
+                                        .zIndex(1f)
+                        );
+
+                        // 精度円
+                        accuracyCircle = googleMap.addCircle(
+                                new CircleOptions()
+                                        .center(pos)
+                                        .radius(loc.getAccuracy())
+                                        .fillColor(0x22007AFF)
+                                        .strokeColor(0x33007AFF)
+                                        .strokeWidth(1f)
+                                        .zIndex(0f)
+                        );*/
                     } else {
                         myMarker.setPosition(current);
                     }
