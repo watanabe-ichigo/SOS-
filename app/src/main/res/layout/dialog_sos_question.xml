@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <!-- 質問1 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="ピンの状態は？"
+            android:textColor="#f66b6b"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/radioGroup1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <RadioButton
+                android:id="@+id/q1_1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="未対応" />
+
+            <RadioButton
+                android:id="@+id/q1_2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="対応中" />
+
+            <RadioButton
+                android:id="@+id/q1_3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="対応済み" />
+        </RadioGroup>
+
+        <!-- 質問2 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="状況は？"
+            android:textColor="#f66b6b"
+            android:textStyle="bold" />/>
+
+        <RadioGroup
+            android:id="@+id/radioGroup2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <RadioButton
+                android:id="@+id/q2_1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="体調不良" />/>
+
+            <RadioButton
+                android:id="@+id/q2_2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="不審者" />/>
+
+            <RadioButton
+                android:id="@+id/q2_3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="事故" />/>
+        </RadioGroup>
+
+        <!-- 質問3 -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="通報は？"
+            android:textColor="#f66b6b"
+            android:textStyle="bold" />/>
+
+        <RadioGroup
+            android:id="@+id/radioGroup3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <RadioButton
+                android:id="@+id/q3_1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="してほしい" />/>
+
+            <RadioButton
+                android:id="@+id/q3_2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="いらない" />/>
+
+        </RadioGroup>
+
+    </LinearLayout>
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

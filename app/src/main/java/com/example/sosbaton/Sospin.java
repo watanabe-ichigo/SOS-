@@ -1,8 +1,9 @@
 package com.example.sosbaton;
 import android.widget.TextView;
+import java.io.Serializable;
+import com.google.android.gms.maps.model.Marker;
 
-
-public class Sospin {
+public class Sospin  implements Serializable {
 
     // 必須
     public long type;
@@ -15,9 +16,12 @@ public class Sospin {
     public long supporttype;
     public String Uname;
 
+    // UI 用フィールド
+    public Marker marker; // Firestoreには保存しない
+    public String uid;    // Firestoreには保存しない
 
 
-    //public Sospin() {}
+    //public Sospin() {} ファイアベース自動追加用"Sospin sos = doc.toObject(Sospin.class);"
 
     public Sospin(long type,double lat, double lng,long createdAt,String docId,long sosCategory,long urgency,long supporttype,String Uname) {
         this.type = type;
@@ -31,11 +35,11 @@ public class Sospin {
         this.Uname = Uname;
     }
 
-    public Sospin(long type,double lat, double lng,long createdAt,String docId) {
-        this.type = type;
-        this.lat = lat;
-        this.lng = lng;
-        this.createdAt = createdAt;
-        this.docId = docId;
+    //uidとmarkerをまとめる用
+    public Sospin(Marker marker,String uid) {
+        this.marker =marker;
+        this.uid =uid;
+
+
     }
 }

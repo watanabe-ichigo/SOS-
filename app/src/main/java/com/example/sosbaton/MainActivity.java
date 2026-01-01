@@ -52,17 +52,21 @@ import androidx.core.widget.NestedScrollView;
 import com.google.android.gms.maps.model.LatLngBounds;
 import android.os.Handler;
 import android.os.Looper;
-
-
+import android.widget.RadioGroup;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.drawable.Drawable;
 import androidx.core.content.ContextCompat;
-import android.content.Context;              // ← 必須
+import android.content.Context;
 import com.google.android.gms.maps.model.BitmapDescriptor;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import android.view.LayoutInflater;
 import com.google.android.gms.maps.model.Circle;
-import com.google.android.gms.maps.model.CircleOptions;
+import com.google.firebase.firestore.WriteBatch;
+import com.google.android.gms.maps.model.GroundOverlay;
+import com.google.android.gms.maps.model.GroundOverlayOptions;
+import android.animation.ValueAnimator;
+
+
 
 
 
@@ -87,6 +91,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private List<Marker> allMarkers = new ArrayList<>();
 
     private Marker myMarker;
+
+
 
     private Marker areaMarker;
 //    private LocationCallback locationCallback;
@@ -118,6 +124,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private Circle blueDot;
     private Circle accuracyCircle;
+
+    //sosピン管理リスト
+    private Map<String, Sospin> sosMarkerMap = new HashMap<>();
+
+    private  GroundOverlay overlay;
+
 
 
 
@@ -185,32 +197,104 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         //ピンボタンクリック時
         btn_pin.setOnClickListener(v->{
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+            if (user == null) {
+                Toast.makeText(this,"ログインしてください",Toast.LENGTH_SHORT).show();
+                return;
+            }
 
+            String myuid = user.getUid();
 
+            LayoutInflater inflater = LayoutInflater.from(this);
+            View view = inflater.inflate(R.layout.dialog_sos_question, null);
+
+            RadioGroup rg1 = view.findViewById(R.id.radioGroup1);
+            RadioGroup rg2 = view.findViewById(R.id.radioGroup2);
+            RadioGroup rg3 = view.findViewById(R.id.radioGroup3);
 
             new AlertDialog.Builder(this)
                     .setTitle("救助要請")
-                    .setMessage("救助を要請しますか？")
-                    .setPositiveButton("はい", (dialog, which) -> {
-                        // はいを押したら呼ばれる
-                        if (isSosActive) {
-                            // すでにSOSピンがある場合
-                            Toast toast = Toast.makeText(this, "避難要請済みです", Toast.LENGTH_LONG);
-                            toast.setGravity(Gravity.CENTER, 0, 0); // インスタンスに対してセット
-                            toast.show();
-                            return; // ここで処理終了
-                        }
-                        sosaddPin(current, 3); // current は LatLng
-                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,15));
-                        isSosActive = true; // ピン設置済みフラグを立てる
-                    })
-                    .setNegativeButton("いいえ", (dialog, which) -> {
-                        // いいえを押したら何もしない
-                        dialog.dismiss();
-                    })
-                    .show();
-            ;
+                    .setView(view)
+                    .setPositiveButton("確定", (dialog, which) -> {
+                        if (rg1.getCheckedRadioButtonId() == -1 ||
+                                rg2.getCheckedRadioButtonId() == -1 ||
+                                rg3.getCheckedRadioButtonId() == -1) {
 
+                            Toast.makeText(this, "すべての質問に回答してください", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        int q1 = rg1.indexOfChild(view.findViewById(rg1.getCheckedRadioButtonId()))+1;
+                        int q2 = rg2.indexOfChild(view.findViewById(rg2.getCheckedRadioButtonId()))+1;
+                        int q3 = rg3.indexOfChild(view.findViewById(rg3.getCheckedRadioButtonId()))+1;
+
+                        // ここで回答結果をまとめて扱える
+                        // 例：Firestoreへ保存、pinType算出など
+                        Log.d("SOS", "Q1=" + q1 + " Q2=" + q2 + " Q3=" + q3);
+
+
+
+                        db.collection("sospin")
+                                .whereEqualTo("uid", myuid)
+                                .get()
+                                .addOnSuccessListener(query -> {
+
+                                    // ① 完全新規なら削除処理を通さずそのまま保存
+                                    if (query.isEmpty()) {
+                                        sosaddPin(current,3,q1,q2,q3,myuid);
+                                        return;
+                                    }
+
+                                    // ② 既存ピンがある場合のみ削除処理
+
+
+                                    if (sosMarkerMap.isEmpty()) {
+                                        Log.d(TAG, "sosMarkerMap は空です");
+                                    } else {
+                                        Log.d(TAG, "sosMarkerMap に要素があります: " + sosMarkerMap.size());
+                                    }
+
+
+                                    for (Map.Entry<String, Sospin> entry : sosMarkerMap.entrySet()) {
+                                        String docId = entry.getKey();
+                                        Sospin info = entry.getValue();
+                                        Marker marker = info.marker;
+
+
+
+                                        if (info.uid.equals(myuid)&&marker!=null&&docId!=null) {
+                                            // ★ これが A のピンの docId
+
+                                            deletePin(marker,docId);
+                                            Log.d(TAG, "あれ？");
+                                            Log.d(TAG, "uid=" + info.uid + ", myuid=" + myuid + ", docId=" + entry.getKey());
+                                        }else{
+                                            Log.d(TAG, "uid=" + info.uid + ", myuid=" + myuid + ", docId=" + entry.getKey());
+                                            Log.d(TAG, "ミスってるでやんす");
+
+                                        }
+                                    }
+
+                                    WriteBatch batch = db.batch();
+                                    for (DocumentSnapshot doc : query) {
+                                        batch.delete(doc.getReference());
+                                    }
+
+                                    batch.commit()
+                                            .addOnSuccessListener(aVoid -> {
+                                                sosaddPin(current,3,q1,q2,q3,myuid);
+                                            })
+                                            .addOnFailureListener(e -> {
+                                                Toast.makeText(this, "既存ピンの削除に失敗しました", Toast.LENGTH_SHORT).show();
+                                            });
+                                })
+                                .addOnFailureListener(e -> {
+                                    Toast.makeText(this, "通信エラーが発生しました", Toast.LENGTH_SHORT).show();
+                                });
+
+                    })
+                    .setNegativeButton("キャンセル", null)
+                    .show();
         });
         //ボトムシートボタン定義＆その他ボタン定義
         Button btngo = findViewById(R.id.btngo);
@@ -265,7 +349,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         });
         //削除
         btndelete.setOnClickListener(v->{
-            deletePin(selectedMarker, selectedDocId);
+
+            new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                    .setTitle("ピン削除")
+                    .setMessage("本当にこのピンを削除しますか？")
+                    .setPositiveButton("削除", (dialog, which) -> {
+
+                        deletePin(selectedMarker, selectedDocId);
+
+                    })
+                    .setNegativeButton("キャンセル", (dialog, which) -> dialog.dismiss())
+                    .show();
+
+
         });
 
 
@@ -686,7 +782,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtAddress.setText("座標:　"+String.format("Lat: %.5f, Lng: %.5f", info.lat, info.lng));
                 //カメラズーム
                 LatLng pin = new LatLng(info.lat, info.lng);
-                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pin,15));
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pin,20));
                 //ボトムシート展開
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 //表示要素
@@ -707,9 +803,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 updateTimeAgo(sos.createdAt, txttime);
                 txtName.setText("投稿者:　"+sos.Uname);
                 txtsupporttype.setText(
-                        sos.supporttype == 1L ? "対応:　  通報要請":
-                                sos.supporttype == 2L ? "対応:　  見守り要請" :
-                                        sos.supporttype == 3L ? "対応:　  支援要請":
+                        sos.supporttype == 1L ? "対応:　  してほしい":
+                                sos.supporttype == 2L ? "対応:　  いらない" :
+                                        sos.supporttype == 3L ? "対応:　  第三者協力要請":
                                                 "不明"
                 );
                 txtsosCategory.setText(
@@ -719,14 +815,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                                 "不明"
                 );
                 txturgency.setText(
-                        sos.urgency == 1L ? "緊急度:　高" :
-                                sos.urgency == 2L ? "緊急度:　中" :
-                                        sos.urgency == 3L ? "緊急度:　低":
+                        sos.urgency == 1L ?"ピン:　 未対応" :
+                                sos.urgency == 2L ? "ピン:　 対応中" :
+                                        sos.urgency == 3L ? "ピン:　 対応済み":
                                                 "不明"
                 );
                 txtTitle.setText("sos情報");
                 //カメラズーム
-                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,15));
+                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,20));
                 //ボトムシート展開
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 //表示要素
@@ -933,7 +1029,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 new MarkerOptions()
                                         .position(pos)
                                         .title("現在地")
-                                        .icon(bitmapDescriptorFromVector(MainActivity.this, R.drawable.person))
+                                        //.icon(bitmapDescriptorFromVector(MainActivity.this, R.drawable.person))
                                         .anchor(0.5f, 1.0f) // 足元を座標に
                                         .flat(true)
                         );
@@ -1362,32 +1458,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //ピンの削除関数
     private void deletePin (Marker marker, String docId){
-        new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
-                .setTitle("ピン削除")
-                .setMessage("本当にこのピンを削除しますか？")
-                .setPositiveButton("削除", (dialog, which) -> {
 
-                    Object tag = marker.getTag();
-                    if (tag instanceof PinInfo) {
-
-                        db.collection("pins").document(docId)
-                                .delete()
-                                .addOnSuccessListener(aVoid -> Log.d(TAG, "ピン削除成功: " + docId))
-                                .addOnFailureListener(e -> Log.w(TAG, "ピン削除失敗", e));
-                        marker.remove();  // マップから削除
-                        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
-
-                    } else {
-                        Toast.makeText(
-                                MainActivity.this,
-                                "このピンは削除できません",
-                                Toast.LENGTH_SHORT
-                        ).show();
-                    }
-
-                })
-                .setNegativeButton("キャンセル", (dialog, which) -> dialog.dismiss())
-                .show();
+        db.collection("pins").document(docId)
+                .delete()
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "ピン削除成功: " + docId))
+                .addOnFailureListener(e -> Log.w(TAG, "ピン削除失敗", e));
+        marker.remove();  // マップから削除
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
     }
     //④ボトムシートの初期化処理
 
@@ -1587,19 +1664,29 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     //sosピン追加関数
-    private void sosaddPin(LatLng pos, long type) {
+    private void sosaddPin(LatLng pos, long type,int q1, int q2, int q3,String uid) {
 
         Map<String, Object> pinData = new HashMap<>();
         pinData.put("lat", pos.latitude);
         pinData.put("lng", pos.longitude);
+        LatLng efect = new LatLng(pos.latitude,pos.longitude);
         Timestamp now = Timestamp.now();
         pinData.put("createdAt", now);
         long createdAtMillis = now.toDate().getTime();
         pinData.put("pinType", type);
+        pinData.put("urgency", q1);
+        pinData.put("sosCategory", q2);
+        pinData.put("supporttype", q3);
+        pinData.put("name",userName);
+        pinData.put("uid", uid);
+
+
+
 
         db.collection("sospin")
                 .add(pinData)
                 .addOnSuccessListener(docRef -> {
+                    String docId = docRef.getId();
 
 
 
@@ -1609,8 +1696,34 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE))
                     );
 
+                    if(q3==1){
+
+                        GroundOverlayOptions options = new GroundOverlayOptions()
+                                .image(BitmapDescriptorFactory.fromResource(R.drawable.efect5)) // 波紋画像
+                                .position(efect, 10000f) // 半径100m
+                                .transparency(0.5f);
+
+                        overlay = googleMap.addGroundOverlay(options);
+
+// 拡大アニメーション
+                        ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
+                        animator.setDuration(5000);
+                        animator.setRepeatCount(ValueAnimator.INFINITE);
+                        animator.addUpdateListener(animation -> {
+                            float value = (float) animation.getAnimatedValue();
+                            overlay.setDimensions(10000 - value * 5000); // 徐々に拡大
+                            overlay.setTransparency(0.5f - value * 0.5f); // 徐々に薄く
+                        });
+                        animator.start();
+
+                    }else{
+                        overlay.remove();
+                    }
+
                     allMarkers.add(marker);
                     marker.showInfoWindow();
+                    sosMarkerMap.put(docId, new Sospin(marker,uid));
+
 
 
                     if (marker != null) {
@@ -1622,7 +1735,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 pos.latitude,
                                 pos.longitude,
                                 createdAtMillis,
-                                docRef.getId()// docId
+                                docRef.getId(),// docId
+                                q1,
+                                q2,
+                                q3,
+                                userName
+
 
 
                         );
@@ -1630,6 +1748,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         marker.setTag(sos);
                     }
 
+                    Toast toast = Toast.makeText(this, "救助要請に成功しました", Toast.LENGTH_LONG);
+                    toast.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 120);
+                    toast.show();
+
+                })
+                .addOnFailureListener(e -> {
+
+                    Toast toast = Toast.makeText(this, "救助要請に失敗しました", Toast.LENGTH_LONG);
+                    toast.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 120);
+                    toast.show();
+
+                    Log.e("SOS", "Firestore保存失敗", e);
                 });
 
     }
