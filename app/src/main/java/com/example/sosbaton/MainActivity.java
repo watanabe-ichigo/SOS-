@@ -65,6 +65,8 @@ import com.google.firebase.firestore.WriteBatch;
 import com.google.android.gms.maps.model.GroundOverlay;
 import com.google.android.gms.maps.model.GroundOverlayOptions;
 import android.animation.ValueAnimator;
+import android.location.Location;
+import com.google.android.gms.maps.model.LatLng;
 
 
 
@@ -132,6 +134,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
 
+
     //sosピン管理リスト(現ユーザ、ユーザID)
     FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
     String myuid = user.getUid();
@@ -141,7 +144,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
 
+    //sosピン管理リスト
+    private Map<String, Sospin> sosMarkerMap = new HashMap<>();
+
+
     private  GroundOverlay overlay;
+    // 避難所キャッシュ
+    private final List<Shelter> shelterCache = new ArrayList<>();
+
+    // 表示中マーカー
+    private final List<Marker> shelterMarkers = new ArrayList<>();
+    private static final double CACHE_RADIUS_KM = 5.0; // 5km取得
+    private LatLng lastCacheCenter = null; // 前回取得した範囲の中心
+    private static final float CACHE_REFRESH_THRESHOLD = 200f; // 200m 未満なら再取得しない
+
+    private LatLng lastLatLng = null;
+    boolean cameraInitialized = false;
+
+
 
 
 
@@ -618,6 +638,48 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .addOnFailureListener(e -> Log.e(TAG, "避難所読み込み失敗", e));
     }
 
+    // 2点間の距離（メートル）を計算する
+    private float distanceMeters(LatLng a, LatLng b) {
+        float[] results = new float[1];
+        Location.distanceBetween(
+                a.latitude, a.longitude,
+                b.latitude, b.longitude,
+                results
+        );
+        return results[0];   // メートル
+    }
+    private void updateShelterMarkers() {
+        Log.d("MAP", "updateShelterMarkers called");
+
+        if (current == null || googleMap == null) return;
+
+        // 🧹 既存マーカー削除
+        if (!shelterMarkers.isEmpty()) {
+            for (Marker m : shelterMarkers) {
+                m.remove();
+            }
+            shelterMarkers.clear();
+        }
+
+        for (Shelter shelter : shelterCache) {
+
+            LatLng shelterPos = new LatLng(shelter.lat, shelter.lng);
+            float distance = distanceMeters(current, shelterPos);
+
+            if (distance > 2000f) continue;
+
+            Marker marker = googleMap.addMarker(
+                    new MarkerOptions()
+                            .position(shelterPos)
+                            .title(shelter.name + " (" + (int)distance + "m)")
+                            .icon(BitmapDescriptorFactory
+                                    .defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+            );
+            marker.setTag(shelter);
+            shelterMarkers.add(marker);
+        }
+    }
+
     // ----------------------------------------------------------------------
 // 【補足：displayNameを更新する関数を別途作成する】
 
@@ -708,7 +770,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap map) {
         googleMap = map; // ★ ここで一度設定すれば十分なのだ
-        loadShelters(); // 避難所をロード (非同期)
+        //loadShelters(); // 避難所をロード (非同期)
+        //loadSheltersOnce();   // ← 初回だけDB通信
         loadSospin();//sosピンをロード
 
         // --- タップでメニュー表示 ---
@@ -772,7 +835,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtAddress.setText("住所:　"+s.address);
                 txtType.setText(s.type);
                 //カメラズーム
-                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(position,15));
+                //googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(position,15));
                 //ボトムシート展開
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 //表示要素
@@ -798,7 +861,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtAddress.setText("座標:　"+String.format("Lat: %.5f, Lng: %.5f", info.lat, info.lng));
                 //カメラズーム
                 LatLng pin = new LatLng(info.lat, info.lng);
-                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pin,20));
+                //
+                 //googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pin,20));
                 //ボトムシート展開
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 //表示要素
@@ -838,7 +902,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 );
                 txtTitle.setText("sos情報");
                 //カメラズーム
-                googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,20));
+                //googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,20));
                 //ボトムシート展開
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 //表示要素
@@ -1011,73 +1075,61 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
     }
-
+    //private boolean firstMoveCamera = true; // 初回カメラ移動用
     private com.google.android.gms.location.LocationCallback locationCallback =
             new com.google.android.gms.location.LocationCallback() {
                 @Override
                 public void onLocationResult(com.google.android.gms.location.LocationResult locationResult) {
                     if (locationResult == null) return;
 
-                    Location loc = locationResult.getLastLocation();
-                    if (loc == null) return;
+                    Location location = locationResult.getLastLocation();
+                    if (location == null) return;
 
-                    LatLng pos = new LatLng(
-                            loc.getLatitude(),
-                            loc.getLongitude()
+                    // 📍 現在地を更新
+                    current = new LatLng(
+                            location.getLatitude(),
+                            location.getLongitude()
                     );
-                    android.location.Location location = locationResult.getLastLocation();
-                    current = new LatLng(location.getLatitude(), location.getLongitude());
 
-                    /*if (myMarker == null) {
+                    if (myMarker == null) {
                         myMarker = googleMap.addMarker(
                                 new MarkerOptions()
                                         .position(current)
                                         .title("現在地")
-                                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
-                        );
-
-
-                    } else {
-                        myMarker.setPosition(current);
-                    }*/
-                    if (myMarker == null) {
-                        myMarker = googleMap.addMarker(
-                                new MarkerOptions()
-                                        .position(pos)
-                                        .title("現在地")
                                         //.icon(bitmapDescriptorFromVector(MainActivity.this, R.drawable.person))
-                                        .anchor(0.5f, 1.0f) // 足元を座標に
+                                        .anchor(0.5f, 1.0f)
                                         .flat(true)
                         );
-
-                        // 青丸（中心）
-                        /*blueDot = googleMap.addCircle(
-                                new CircleOptions()
-                                        .center(pos)
-                                        .radius(6) // メートル
-                                        .fillColor(0xFF007AFF)
-                                        .strokeWidth(0)
-                                        .zIndex(1f)
-                        );
-
-                        // 精度円
-                        accuracyCircle = googleMap.addCircle(
-                                new CircleOptions()
-                                        .center(pos)
-                                        .radius(loc.getAccuracy())
-                                        .fillColor(0x22007AFF)
-                                        .strokeColor(0x33007AFF)
-                                        .strokeWidth(1f)
-                                        .zIndex(0f)
-                        );*/
                     } else {
                         myMarker.setPosition(current);
                     }
 
-//                    googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current, 17));
+                    /*// 初回だけカメラを現在地に移動
+                    if (firstMoveCamera) {
+                        googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(current, 15));
+                        firstMoveCamera = false;
+                    }*/
+// Firestore再取得判定（中心から200m以上移動したら再取得）
+                    boolean needReload = false;
+                    if (lastCacheCenter == null) {
+                        needReload = true; // 初回は必ず取得
+                    } else {
+                        float distance = distanceMeters(lastCacheCenter, current); // m単位
+                        if (distance >= CACHE_REFRESH_THRESHOLD) {
+                            needReload = true;
+                        }
+                    }
+
+                    if (needReload) {
+                        loadSheltersCacheFromDB();
+
+                        // 前回取得中心を更新
+                        lastCacheCenter = current;
+                    }
+
+
                 }
             };
-
     // --- 位置情報追尾開始 ---
     private void startLocationUpdates () {
         if (ActivityCompat.checkSelfPermission(this,
@@ -1562,39 +1614,58 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Log.w("TAG", "docId を保存できませんでした（tag が不明）");
     }
 
+    private void loadSheltersCacheFromDB() {
+        if (current == null) return;
 
-    //避難所ピン情報をファイヤベースから取得
-    private void loadShelters() {
-        db.collection("test_shelters").get().addOnSuccessListener(query -> {
-            for (DocumentSnapshot doc : query) {
-                String docId = doc.getId();
-                String name = doc.getString("name");
-                String address = doc.getString("address");
-                String type = doc.getString("type");
-                double lat = doc.getDouble("lat");
-                double lng = doc.getDouble("lng");
-                position = new LatLng(lat, lng);
+        double lat = current.latitude;
+        double lng = current.longitude;
 
-                Marker marker = googleMap.addMarker(new MarkerOptions()
-                        .position(position)
-                        .title("避難所")
-                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)));
+        // 緯度・経度の矩形範囲を計算（半径2km）
+        double latDelta = CACHE_RADIUS_KM / 111.0;
+        double lngDelta = CACHE_RADIUS_KM / (111.0 * Math.cos(Math.toRadians(lat)));
 
-                marker.setTag(new Shelter(
-                        docId,
-                        name,
-                        address,
-                        type,
-                        lat,
-                        lng
-                ));
-            }
+        double minLat = lat - latDelta;
+        double maxLat = lat + latDelta;
+        double minLng = lng - lngDelta;
+        double maxLng = lng + lngDelta;
 
-        });
+        Log.d("MAP", "Firestore 範囲検索: "
+                + minLat + "〜" + maxLat + ", "
+                + minLng + "〜" + maxLng);
 
+        db.collection("shelters")
+                .whereGreaterThanOrEqualTo("lat", minLat)
+                .whereLessThanOrEqualTo("lat", maxLat)
+                .get()
+                .addOnSuccessListener(query -> {
+
+                    shelterCache.clear();
+
+                    for (DocumentSnapshot doc : query) {
+
+                        Double sLat = doc.getDouble("lat");
+                        Double sLng = doc.getDouble("lng");
+                        if (sLat == null || sLng == null) continue;
+
+                        // 経度で最終フィルタ
+                        if (sLng < minLng || sLng > maxLng) continue;
+
+                        String id = doc.getId();
+                        String name = doc.getString("name");
+                        String address = doc.getString("address");
+                        String type = doc.getString("type");
+
+                        shelterCache.add(new Shelter(
+                                id, name, address, type, sLat, sLng
+                        ));
+                    }
+
+                    Log.d("MAP", "キャッシュ取得完了: " + shelterCache.size() + "件");
+
+                    // キャッシュからピン表示
+                    updateShelterMarkers();
+                });
     }
-
-
 
     // ルート削除（複数可）関数
     private void clearAllPolylines() {
