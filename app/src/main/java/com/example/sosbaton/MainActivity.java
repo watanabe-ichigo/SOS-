@@ -797,10 +797,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         googleMap = map; // ★ ここで一度設定すれば十分なのだ
         loadSospin();//sosピンをロード
 
-        if (!listenerRegistered) {
+        /*if (!listenerRegistered) {
             startPinsListener();
             listenerRegistered = true;
-        }
+        }*/
 
         // --- タップでメニュー表示 ---
         googleMap.setOnMapClickListener(latLng -> {
@@ -995,9 +995,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 
-    private void startPinsListener() {
+    /*private void startPinsListener() {
 
-        db.collection("pins")
+        db.collection("sospin")
                 .addSnapshotListener((snapshots, e) -> {
                     if (e != null || snapshots == null || googleMap == null) return;
 
@@ -1021,7 +1021,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         }
                     }
                 });
-    }
+    }*/
 
 
     private void addPin(LatLng pos, String userName, long type) {
