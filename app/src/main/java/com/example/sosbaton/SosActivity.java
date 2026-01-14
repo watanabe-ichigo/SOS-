@@ -1,8 +1,12 @@
 
 package com.example.sosbaton;
 
+import android.animation.ValueAnimator;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
+
+import android.util.Log;
+import android.view.Gravity;
 import android.widget.ImageButton;
 import android.widget.Button;
 import android.content.Intent;
@@ -11,11 +15,18 @@ import android.app.AlertDialog;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.GroundOverlayOptions;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.HashMap;
@@ -55,7 +66,7 @@ public class SosActivity extends AppCompatActivity {
                 .setMessage("第三者に位置情報を共有しますか？")
                 .setPositiveButton("OK", (dialog, which) -> {
                     startDial119();
-                    sendLocationToPinsCollection(1); // type = 1 → SOS
+                    sendLocationToPinsCollection(3);
                 })
                 .setNegativeButton("キャンセル", (dialog, which) -> {
                     // キャンセルでも電話をかける
@@ -64,6 +75,8 @@ public class SosActivity extends AppCompatActivity {
                 .show();
     }
 
+
+
     // 110 → 確認ダイアログ
     private void showConfirmDialogFor110() {
         new AlertDialog.Builder(this)
@@ -71,7 +84,9 @@ public class SosActivity extends AppCompatActivity {
                 .setMessage("第三者に位置情報を共有しますか？")
                 .setPositiveButton("OK", (dialog, which) -> {
                     startDial110();
-                    sendLocationToPinsCollection(1); // type = 2 → 110
+
+
+                    sendLocationToPinsCollection(3); // type = 3 → sos
                 })
                 .setNegativeButton("キャンセル", (dialog, which) -> {
                     // キャンセルでも電話
@@ -79,6 +94,63 @@ public class SosActivity extends AppCompatActivity {
                 })
                 .show();
     }
+
+    private void sendLocationToPinsCollection(
+            int createdAt,
+            int name,
+            int pinType,
+            int sosCategory,
+            int urgency,
+            int supportType,
+            String uid
+    ) {
+
+        // ① 位置情報の権限チェック
+        if (ActivityCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    1000
+            );
+            return;
+        }
+
+        // ② 現在地取得
+        fusedLocationClient.getLastLocation()
+                .addOnSuccessListener(location -> {
+                    if (location == null) return;
+
+                    double lat = location.getLatitude();
+                    double lng = location.getLongitude();
+
+                    // ③ Firestoreに保存するデータ
+                    Map<String, Object> pinData = new HashMap<>();
+                    pinData.put("lat_x", lat);
+                    pinData.put("lng_y", lng);
+                    pinData.put("pinType", pinType);
+                    pinData.put("urgency", urgency);
+                    pinData.put("sosCategory", sosCategory);
+                    pinData.put("supportType", supportType);
+                    pinData.put("uid", uid);
+                    pinData.put("name", userName);
+                    pinData.put("createdAt", Timestamp.now());
+
+                    // ④ Firestoreへ保存
+                    db.collection("pins")
+                            .add(pinData)
+                            .addOnSuccessListener(docRef -> {
+                                Log.d("PIN", "ピン追加成功: " + docRef.getId());
+                            })
+                            .addOnFailureListener(e -> {
+                                Log.e("PIN", "保存失敗", e);
+                            });
+                });
+    }
+
+
 
     // 119 に電話
     private void startDial119() {
@@ -93,6 +165,14 @@ public class SosActivity extends AppCompatActivity {
         intent.setData(Uri.parse("tel:110"));
         startActivity(intent);
     }
+
+
+
+
+
+
+
+
 
     // 現在地取得 → pins コレクションに追加（typeで区別）
     private void sendLocationToPinsCollection(int type) {
@@ -147,6 +227,7 @@ public class SosActivity extends AppCompatActivity {
                 });
     }
 }
+
 
 
 

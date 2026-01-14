@@ -67,6 +67,8 @@ import com.google.android.gms.maps.model.GroundOverlayOptions;
 import android.animation.ValueAnimator;
 import android.location.Location;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.firebase.firestore.DocumentChange;
+
 
 
 
@@ -127,6 +129,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     LatLng selectedshelterPinlatlng = null;
 
 
+    private boolean listenerRegistered = false;
+
 
 
 
@@ -154,9 +158,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     // 表示中マーカー
     private final List<Marker> shelterMarkers = new ArrayList<>();
-    private static final double CACHE_RADIUS_KM = 5.0; // 5km取得
+    private static final double CACHE_RADIUS_KM = 2.0; // 5km取得
     private LatLng lastCacheCenter = null; // 前回取得した範囲の中心
-    private static final float CACHE_REFRESH_THRESHOLD = 200f; // 200m 未満なら再取得しない
+    private static final float CACHE_REFRESH_THRESHOLD = 1000f; // 200m 未満なら再取得しない
 
     private LatLng lastLatLng = null;
     boolean cameraInitialized = false;
@@ -214,12 +218,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .setNeutralButton("最短ルート", (dialog, which) -> {
                         clearAllPolylines();
 
+                        Shelter nearest = findNearestShelter();
+                        if (nearest == null) {
+                            Toast.makeText(this, "近くに避難所が見つかりません", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+
+                        LatLng target = new LatLng(nearest.lat, nearest.lng);
+
+                        // 最短ルートを描画
+                        drawRouteShortest(target);
+
+                        // カメラ移動
+                        googleMap.animateCamera(
+                                CameraUpdateFactory.newLatLngZoom(current, 18f)
+                        );
                         // 例: 最短ルート
-                        drawRouteShortest(new LatLng(37.39830881, 140.35796203));
+                        /*drawRouteShortest(new LatLng(37.39830881, 140.35796203));
                         drawRouteShortest(new LatLng(37.376782, 140.392777));     // 東部体育館
                         drawRouteShortest(new LatLng(37.36942367, 140.37393403)); // ビッグパレット
                         drawRouteShortest(new LatLng(37.419631, 140.390504));
-                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,20));// 富久山公民館
+                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,20));// 富久山公民館*/
                     })
                     .setNegativeButton("ルートリセット", (dialog, which) -> {
                         clearAllPolylines();
@@ -776,9 +795,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap map) {
         googleMap = map; // ★ ここで一度設定すれば十分なのだ
-        //loadShelters(); // 避難所をロード (非同期)
-        //loadSheltersOnce();   // ← 初回だけDB通信
         loadSospin();//sosピンをロード
+
+        if (!listenerRegistered) {
+            startPinsListener();
+            listenerRegistered = true;
+        }
 
         // --- タップでメニュー表示 ---
         googleMap.setOnMapClickListener(latLng -> {
@@ -822,7 +844,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         // --- Firestore 読み込み ---
         loadPinsFromFirestore(); // ★ ピンをロード。一度の呼び出しで十分なのだ。
 
-        // --- マーカークリックメニュー ---
+        /* --- マーカークリックメニュー ---*/
         googleMap.setOnMarkerClickListener(marker -> {
             selectedMarker = marker;
             saveSelectedDocId(marker);
@@ -973,6 +995,35 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 
+    private void startPinsListener() {
+
+        db.collection("pins")
+                .addSnapshotListener((snapshots, e) -> {
+                    if (e != null || snapshots == null || googleMap == null) return;
+
+                    for (DocumentChange dc : snapshots.getDocumentChanges()) {
+
+                        if (dc.getType() == DocumentChange.Type.ADDED) {
+
+                            DocumentSnapshot doc = dc.getDocument();
+
+                            Double lat = doc.getDouble("lat_x");
+                            Double lng = doc.getDouble("lng_y");
+                            String name = doc.getString("name");
+
+                            if (lat == null || lng == null) continue;
+
+                            googleMap.addMarker(
+                                    new MarkerOptions()
+                                            .position(new LatLng(lat, lng))
+                                            .title(name)
+                            );
+                        }
+                    }
+                });
+    }
+
+
     private void addPin(LatLng pos, String userName, long type) {
 
         Map<String, Object> pinData = new HashMap<>();
@@ -1016,6 +1067,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     }
                 });
     }
+
+    //一番近い避難所の位置を返す
+    private Shelter findNearestShelter() {
+        if (current == null || shelterCache.isEmpty()) return null;
+
+        Shelter nearest = null;
+        float minDistance = Float.MAX_VALUE;
+
+        for (Shelter shelter : shelterCache) {
+            LatLng pos = new LatLng(shelter.lat, shelter.lng);
+            float distance = distanceMeters(current, pos);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = shelter;
+            }
+        }
+        return nearest;
+    }
+
     private void loadPinsFromFirestore() {
         db.collection("pins")
                 .get()
@@ -1104,7 +1175,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 new MarkerOptions()
                                         .position(current)
                                         .title("現在地")
-                                        //.icon(bitmapDescriptorFromVector(MainActivity.this, R.drawable.person))
+                                        .icon(bitmapDescriptorFromVector(MainActivity.this, R.drawable.person))
                                         .anchor(0.5f, 1.0f)
                                         .flat(true)
                         );
@@ -1884,7 +1955,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         long minutes = diff / (1000 * 60);
         long hours = diff / (1000 * 60 * 60);
-
         String timeAgo;
         if (minutes < 1) timeAgo = "たった今";
         else if (minutes < 60) timeAgo = minutes + "分前";
