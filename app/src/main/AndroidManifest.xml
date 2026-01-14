@@ -23,6 +23,13 @@
 
         <activity android:name=".StartActivity" />
 
+        <activity android:name=".friendActivity"/>
+        <activity android:name=".FriendmsgActivity"/>
+
+        <activity
+            android:name=".BulletinboardActivity"
+            android:exported="false" />
+
 
         <activity
             android:name=".MainActivity"

@@ -4,12 +4,17 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.method.HideReturnsTransformationMethod;
 import android.text.method.PasswordTransformationMethod;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -39,6 +44,28 @@ public class RegisterActivity extends AppCompatActivity {
         ImageButton btnToggleConfirm = findViewById(R.id.btnToggleConfirm);
         Button btnRegister = findViewById(R.id.btnRegister);
         ImageButton backButton = findViewById(R.id.backButton);
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        // Activity の onCreate 内
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        View root = findViewById(R.id.root_layoutn);
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            // システムバーの inset を取得
+            Insets systemBarsInsets = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+            // 全方向に padding を反映
+            v.setPadding(
+                    systemBarsInsets.left,
+                    systemBarsInsets.top,
+                    systemBarsInsets.right,
+                    systemBarsInsets.bottom
+            );
+
+            return insets;
+        });
+
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             // 現在のフラグを取得し、LIGHT_STATUS_BAR フラグを追加するのだ

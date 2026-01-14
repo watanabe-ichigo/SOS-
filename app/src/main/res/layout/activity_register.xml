@@ -3,6 +3,7 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root_layoutn"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="20dp"
@@ -88,18 +89,16 @@
         app:layout_constraintTop_toBottomOf="@+id/etConfirmPassword" />
 
 
-
-
     <TextView
         android:id="@+id/textView3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="116dp"
+        android:layout_marginTop="8dp"
         android:text="SOSバトン"
         android:textColor="#F66B6B"
         android:textSize="60sp"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.493"
+        app:layout_constraintHorizontal_bias="0.466"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -119,16 +118,15 @@
         android:id="@+id/backButton"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:padding="8dp"
+        android:layout_marginStart="0dp"
+        android:layout_marginTop="0dp"
         android:background="@android:color/transparent"
-        android:src="@drawable/baseline_arrow_back_ios_new_24"
         android:contentDescription="戻る"
-        app:tint="@android:color/black"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
+        android:padding="8dp"
+        android:src="@drawable/baseline_arrow_back_ios_new_24"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@android:color/black" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

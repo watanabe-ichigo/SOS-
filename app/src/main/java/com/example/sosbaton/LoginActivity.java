@@ -3,6 +3,9 @@ package com.example.sosbaton;
 import android.os.Bundle;
 import android.widget.Button;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 public class LoginActivity extends AppCompatActivity {
     @Override
@@ -15,5 +18,6 @@ public class LoginActivity extends AppCompatActivity {
             // 単純に前の画面（MainActivity）へ戻る
             getOnBackPressedDispatcher().onBackPressed();
         });
+
     }
 }

@@ -23,23 +23,20 @@ public class Sospin  implements Serializable {
 
     //public Sospin() {} ファイアベース自動追加用"Sospin sos = doc.toObject(Sospin.class);"
 
-    public Sospin(long type,double lat, double lng,long createdAt,String docId,long sosCategory,long urgency,long supporttype,String Uname) {
+
+    public Sospin(long type,double lat, double lng,long createdAt,long sosCategory,long urgency,long supporttype,String Uname,String uid,String docId) {
         this.type = type;
         this.lat = lat;
         this.lng = lng;
         this.createdAt = createdAt;
-        this.docId = docId;
         this.sosCategory = sosCategory;
         this.urgency = urgency;
         this.supporttype = supporttype;
         this.Uname = Uname;
+        this.uid = uid;
+        this.docId=docId;
     }
 
-    //uidとmarkerをまとめる用
-    public Sospin(Marker marker,String uid) {
-        this.marker =marker;
-        this.uid =uid;
 
 
-    }
 }

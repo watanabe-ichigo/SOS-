@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="12dp"
+    android:background="#FFFFFF">
+
+    <!-- ユーザー名 -->
+    <TextView
+        android:id="@+id/tvUsername"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Username"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btnDelete"
+        android:ellipsize="end"
+        android:singleLine="true"/>
+
+    <!-- 削除ボタン -->
+    <ImageButton
+        android:id="@+id/btnDelete"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@android:drawable/ic_menu_delete"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tvUsername"
+        android:contentDescription="削除"/>
+
+    <!-- ユーザーID -->
+    <TextView
+        android:id="@+id/tvUserId"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="userId12345"
+        android:textSize="14sp"
+        android:textColor="#666666"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvUsername"
+        app:layout_constraintEnd_toStartOf="@id/btnEye"
+        android:ellipsize="end"
+        android:singleLine="true"/>
+
+    <!-- 目のアイコン (表示/非表示切替) -->
+    <ImageButton
+        android:id="@+id/btnEye"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@android:drawable/ic_menu_view"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        app:layout_constraintEnd_toStartOf="@id/btnCopy"
+        app:layout_constraintTop_toTopOf="@id/tvUserId"
+        android:contentDescription="表示/非表示切替"/>
+
+    <!-- コピーアイコン -->
+    <ImageButton
+        android:id="@+id/btnCopy"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="コピー"
+        android:src="@mipmap/cope1"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/tvUserId" />
+
+    <!-- 現在の避難場所 -->
+    <TextView
+        android:id="@+id/tvCurrentBoard"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="現在の避難場所: ○○避難所"
+        android:textSize="14sp"
+        android:textColor="#444444"
+        app:layout_constraintStart_toStartOf="@id/tvUserId"
+        app:layout_constraintTop_toBottomOf="@id/tvUserId"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:ellipsize="end"
+        android:singleLine="true"/>
+
+    <!-- 追加日時 -->
+    <TextView
+        android:id="@+id/tvAddedAt"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="2026-01-10 14:00"
+        android:textSize="12sp"
+        android:textColor="#999999"
+        app:layout_constraintStart_toStartOf="@id/tvUserId"
+        app:layout_constraintTop_toBottomOf="@id/tvCurrentBoard"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

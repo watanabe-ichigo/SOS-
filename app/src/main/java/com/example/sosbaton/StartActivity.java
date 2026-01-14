@@ -14,6 +14,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import android.view.View;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.graphics.Insets;
 
 public class StartActivity extends AppCompatActivity {
 
@@ -26,6 +31,17 @@ public class StartActivity extends AppCompatActivity {
         setContentView(R.layout.activity_start);
         EditText etPassword = findViewById(R.id.etPassword);
         ImageButton btnTogglePassword = findViewById(R.id.btnTogglePassword);
+
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        View root = findViewById(R.id.root_layout); // ConstraintLayout の id
+        ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
+            Insets sys = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            // 全方向に inset を padding として反映させたい場合
+            v.setPadding(sys.left, sys.top, sys.right, sys.bottom);
+            return insets;
+        });
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             // 現在のフラグを取得し、LIGHT_STATUS_BAR フラグを追加するのだ
             int flags = getWindow().getDecorView().getSystemUiVisibility();
@@ -102,5 +118,7 @@ public class StartActivity extends AppCompatActivity {
             Intent intent = new Intent(StartActivity.this, RegisterActivity.class);
             startActivity(intent);
         });
+
+
     }
 }

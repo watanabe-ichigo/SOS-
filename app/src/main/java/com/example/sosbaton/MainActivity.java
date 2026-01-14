@@ -60,7 +60,7 @@ import androidx.core.content.ContextCompat;
 import android.content.Context;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import android.view.LayoutInflater;
-import com.google.android.gms.maps.model.Circle;
+import java.util.Iterator;
 import com.google.firebase.firestore.WriteBatch;
 import com.google.android.gms.maps.model.GroundOverlay;
 import com.google.android.gms.maps.model.GroundOverlayOptions;
@@ -116,17 +116,30 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private LatLng current;
     //避難所座標
     private LatLng position;
+    //選択ピン保存用
+     // 現在選択中の避難所ピン(docID)
+    private String selectedshelterPinDocId = null;
+     //現在選択中の避難所ピン(name)
+    private String selectedshelterPinname = null;
+    //現在選択中の避難所ピン(座標)
+    LatLng selectedshelterPinlatlng = null;
 
-    private boolean isSosActive = false; // 初期値は false
+
+
+
 
     private NestedScrollView nestedScrollView;
 
 
-    private Circle blueDot;
-    private Circle accuracyCircle;
 
-    //sosピン管理リスト
-    private Map<String, Sospin> sosMarkerMap = new HashMap<>();
+    //sosピン管理リスト(現ユーザ、ユーザID)
+    FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+    String myuid = user.getUid();
+    //sospinは一本
+    List<Sospin> mySosPins = new ArrayList<>();
+
+
+
 
     private  GroundOverlay overlay;
 
@@ -197,13 +210,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         //ピンボタンクリック時
         btn_pin.setOnClickListener(v->{
-            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
             if (user == null) {
                 Toast.makeText(this,"ログインしてください",Toast.LENGTH_SHORT).show();
                 return;
             }
 
-            String myuid = user.getUid();
 
             LayoutInflater inflater = LayoutInflater.from(this);
             View view = inflater.inflate(R.layout.dialog_sos_question, null);
@@ -248,32 +260,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     // ② 既存ピンがある場合のみ削除処理
 
 
-                                    if (sosMarkerMap.isEmpty()) {
-                                        Log.d(TAG, "sosMarkerMap は空です");
-                                    } else {
-                                        Log.d(TAG, "sosMarkerMap に要素があります: " + sosMarkerMap.size());
-                                    }
-
-
-                                    for (Map.Entry<String, Sospin> entry : sosMarkerMap.entrySet()) {
-                                        String docId = entry.getKey();
-                                        Sospin info = entry.getValue();
-                                        Marker marker = info.marker;
 
 
 
-                                        if (info.uid.equals(myuid)&&marker!=null&&docId!=null) {
-                                            // ★ これが A のピンの docId
 
-                                            deletePin(marker,docId);
-                                            Log.d(TAG, "あれ？");
-                                            Log.d(TAG, "uid=" + info.uid + ", myuid=" + myuid + ", docId=" + entry.getKey());
-                                        }else{
-                                            Log.d(TAG, "uid=" + info.uid + ", myuid=" + myuid + ", docId=" + entry.getKey());
-                                            Log.d(TAG, "ミスってるでやんす");
-
-                                        }
-                                    }
 
                                     WriteBatch batch = db.batch();
                                     for (DocumentSnapshot doc : query) {
@@ -302,6 +292,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Button Close = findViewById(R.id.Close);
         Button back = findViewById(R.id.btnback);
         Button btncurrent = findViewById(R.id.btncurrent);
+        Button btnchat =findViewById(R.id.btnchat);
+
         //閉じる
         Close.setOnClickListener(v->{
             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
@@ -503,6 +495,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Intent intent = new Intent(MainActivity.this, StartActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
+            } else if (id == R.id.nav_friend) {
+                startActivity(new Intent(MainActivity.this, friendActivity.class));
+            } else if (id == R.id.nav_massage) {
+                startActivity(new Intent(MainActivity.this, FriendmsgActivity.class));
             }
             drawerLayout.closeDrawers();
             return true;
@@ -569,6 +565,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
         );
 
+
+        //掲示板
+        btnchat.setOnClickListener(v->{
+
+
+            if (selectedshelterPinDocId == null) {
+                Log.d(TAG, "変数になんも入っていないね");
+                return;
+            }
+            Intent intent = new Intent(MainActivity.this, BulletinboardActivity.class);
+            intent.putExtra("PIN_DOC_ID", selectedshelterPinDocId);
+            intent.putExtra("PIN_NAME",selectedshelterPinname);
+            intent.putExtra("my_user_name",userName);
+            intent.putExtra("PIN_LAT_LNG",selectedshelterPinlatlng);
+            startActivity(intent);
+        });
 
 
 
@@ -750,6 +762,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             if (tag instanceof Shelter) {//避難所ピン
                 Shelter s = (Shelter) tag;
+                 selectedshelterPinDocId = s.docId;
+                 selectedshelterPinname  = s.name;
+                 selectedshelterPinlatlng = new LatLng(s.lat,s.lng);
+
                 //テキスト変更箇所
                 txtTitle.setText("避難所情報");
                 txtName.setText("場所:　"+s.name);
@@ -1605,6 +1621,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 String name = doc.getString("name");
                 Timestamp timestamp = doc.getTimestamp("createdAt");
                 LatLng sosposition = new LatLng(lat, lng);
+                String uid = doc.getString("uid");
+
 
                 // nullチェック（超重要）
                 if (pinTypeLong == null || lat == null || lng == null || timestamp == null) {
@@ -1644,17 +1662,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         .title("SOS（救助要請）")
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)));
 
-                marker.setTag(new Sospin(
+                Sospin sos = new Sospin(
                         type,
                         lat,
                         lng,
                         createdAt,
-                        docId,
                         sosCategory,
                         urgency,
                         supporttype,
-                        name
-                ));
+                        name,
+                        uid,
+                        docId
+                );
+                marker.setTag(sos);
+                sos.marker = marker;
+                mySosPins.add(sos);
             }
 
         });
@@ -1683,10 +1705,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
 
+
         db.collection("sospin")
-                .add(pinData)
-                .addOnSuccessListener(docRef -> {
-                    String docId = docRef.getId();
+                .document(uid)   // ← uid固定
+                .set(pinData)
+                .addOnSuccessListener(v -> {
+
+
+                    // 既存ピンを全削除してから表示
+                    clearMySosPinFromMap();
 
 
 
@@ -1716,17 +1743,19 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         });
                         animator.start();
 
-                    }else{
+                    } else if (overlay != null) {
                         overlay.remove();
                     }
 
+
                     allMarkers.add(marker);
                     marker.showInfoWindow();
-                    sosMarkerMap.put(docId, new Sospin(marker,uid));
+
 
 
 
                     if (marker != null) {
+
 
 
 
@@ -1735,17 +1764,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 pos.latitude,
                                 pos.longitude,
                                 createdAtMillis,
-                                docRef.getId(),// docId
                                 q1,
                                 q2,
                                 q3,
-                                userName
+                                userName,
+                                uid,
+                                uid
 
 
 
                         );
 
                         marker.setTag(sos);
+                        sos.marker = marker;
+                        mySosPins.add(sos);
                     }
 
                     Toast toast = Toast.makeText(this, "救助要請に成功しました", Toast.LENGTH_LONG);
@@ -1783,5 +1815,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         txttime.setText("投稿日時:　"+timeAgo);
     }
 
+
+
+    private void clearMySosPinFromMap() {
+        for (Iterator<Sospin> it = mySosPins.iterator(); it.hasNext();) {
+            Sospin s = it.next();
+            if (s.uid.equals(myuid)) {
+
+                db.collection("sospin").document(s.docId).delete();
+
+                if (s.marker != null) s.marker.remove();
+                it.remove();
+
+            }
+        }
+    }
 
 }

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="12dp"
+    android:background="#FFFFFF">
+
+    <!-- 承認ボタン -->
+    <ImageButton
+        android:id="@+id/btnApprove"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:src="@android:drawable/ic_input_add"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="承認"
+        app:layout_constraintEnd_toStartOf="@id/btnDelete"
+        app:layout_constraintTop_toTopOf="parent"/>
+
+    <!-- 削除ボタン -->
+    <ImageButton
+        android:id="@+id/btnDelete"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:src="@android:drawable/ic_menu_delete"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="削除"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
+
+    <!-- ユーザー名 -->
+    <TextView
+        android:id="@+id/tvFriendName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Username"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/btnApprove"
+        android:ellipsize="end"
+        android:singleLine="true"/>
+
+    <!-- ユーザーID -->
+    <TextView
+        android:id="@+id/tvFriendUserId"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="userId12345"
+        android:textSize="14sp"
+        android:textColor="#666666"
+        app:layout_constraintStart_toStartOf="@id/tvFriendName"
+        app:layout_constraintTop_toBottomOf="@id/tvFriendName"
+        app:layout_constraintEnd_toStartOf="@id/btnApprove"
+        android:ellipsize="end"
+        android:singleLine="true"/>
+</androidx.constraintlayout.widget.ConstraintLayout>
