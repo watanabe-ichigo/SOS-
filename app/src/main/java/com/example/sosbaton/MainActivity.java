@@ -137,7 +137,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //sosピン管理リスト(現ユーザ、ユーザID)
     FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-    String myuid = user.getUid();
+    String myuid;
     //sospinは一本
     List<Sospin> mySosPins = new ArrayList<>();
 
@@ -388,6 +388,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (currentUser != null) {
             // ログイン状態が維持されている
+            myuid = user.getUid();
 
             // 現在のユーザー名（displayName）をチェックする
             String displayName = currentUser.getDisplayName();
@@ -588,6 +589,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         //掲示板
         btnchat.setOnClickListener(v->{
+
+            if (user == null) {
+                Toast.makeText(this,"ログインしてください",Toast.LENGTH_SHORT).show();
+                return;
+            }
 
 
             if (selectedshelterPinDocId == null) {
@@ -872,6 +878,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtAddress.setVisibility(View.VISIBLE);
                 txtType.setVisibility(View.VISIBLE);
                 //非表示要素
+                Button btnchat = findViewById(R.id.btnchat);
+                btnchat.setVisibility(View.GONE);
                 txttime.setVisibility(View.GONE);
                 txturgency.setVisibility(View.GONE);
                 txtsosCategory.setVisibility(View.GONE);

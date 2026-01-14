@@ -138,7 +138,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:backgroundTint="#F66B6B"
-                android:text="掲示板＆チャット"
+                android:text="掲示板"
                 />
 
             <Button
