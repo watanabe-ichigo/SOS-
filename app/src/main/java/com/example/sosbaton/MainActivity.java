@@ -3,6 +3,7 @@ package com.example.sosbaton;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -10,6 +11,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+
+import java.net.URLEncoder;
 import java.util.Map;
 import java.util.HashMap;
 import androidx.activity.EdgeToEdge;
@@ -31,6 +34,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
@@ -69,14 +73,8 @@ import android.location.Location;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.firestore.DocumentChange;
 
-
-
-
-
-
-
-
-
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
@@ -106,9 +104,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FirebaseAuth auth;
 
     private FirebaseUser currentUser;
-    private int successfulRouteCount = 0;  // 成功したルート数
-    private int totalEvacuationPoints = 0; // 避難所の総数
-    private int finishedRouteCount = 0; // 新規：避難所ごとのルート探索完了数
+
     private boolean isEvacuationRouteRequested = false;
     private final Object routeLock = new Object(); // スレッド安全のため
     private Marker selectedMarker = null;
@@ -136,6 +132,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private NestedScrollView nestedScrollView;
 
+    //検索回数制限用(避難所数）
+    private int retryCount = 0;
+
+    //検索回数制限用(リクエスト数)
+    private int requestcount = 0;
+
+    //再帰用フラグ
+    private boolean isProcessingRoute = false;
+
+    //避難所ピン描画切り替え用フラグ
+    private boolean isProcessingShelterpin = false;
+
+
+
 
 
 
@@ -156,6 +166,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     // 避難所キャッシュ
     private final List<Shelter> shelterCache = new ArrayList<>();
 
+    //避難所ルート探索削除用リスト
+    private   List<Shelter> shelterdelete = new ArrayList<>();
+
+    //避難所保持用リスト
+    private   List<Shelter> shelters = new ArrayList<>();
+
     // 表示中マーカー
     private final List<Marker> shelterMarkers = new ArrayList<>();
     private static final double CACHE_RADIUS_KM = 2.0; // 5km取得
@@ -164,6 +180,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private LatLng lastLatLng = null;
     boolean cameraInitialized = false;
+
+
 
 
 
@@ -209,14 +227,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .setMessage("避難方法を選択してください")
                     .setPositiveButton("危険回避ルート", (dialog, which) -> {
                         clearAllPolylines();
+                        retryCount=0;
+                        //避難所リスト再構築
+                        shelterdelete.addAll(shelters);
                         isEvacuationRouteRequested = true;
                         loadEvacuationPointsFromDB();
-                        successfulRouteCount = 0;
-                        finishedRouteCount = 0;
+
                         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,20));
                     })
-                    .setNeutralButton("最短ルート", (dialog, which) -> {
+                    .setNeutralButton("最短距離の避難所", (dialog, which) -> {
                         clearAllPolylines();
+                        //描画用フラグオン
+                        isProcessingShelterpin=true;
+                        //とりあえず避難所ピン全消し(描画のみ)
+                        for (Marker marker : shelterMarkers) {
+                            marker.remove(); // 地図から消す
+                        }
+                        shelterMarkers.clear();
+
+
+
+
+
 
                         Shelter nearest = findNearestShelter();
                         if (nearest == null) {
@@ -226,10 +258,33 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                         LatLng target = new LatLng(nearest.lat, nearest.lng);
 
+                        //ヒットした避難所ピンのみ描画
+                        Marker marker = googleMap.addMarker(
+                                new MarkerOptions()
+                                        .position(target)
+                                        .title(nearest.name )
+                                        .icon(BitmapDescriptorFactory
+                                                .defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                        );
+                        if(marker!=null){
+                            marker.setTag(nearest);
+                        }
+
+
                         // 最短ルートを描画
                         drawRouteShortest(target);
 
-                        // カメラ移動
+
+//                        // カメラ移動
+//                        LatLngBounds bounds = new LatLngBounds.Builder()
+//                                .include(current)
+//                                .include(selectedMarker.getPosition())
+//                                .build();
+//
+//                        googleMap.animateCamera(
+//                                CameraUpdateFactory.newLatLngBounds(bounds, 200)
+//                        );
+
                         googleMap.animateCamera(
                                 CameraUpdateFactory.newLatLngZoom(current, 18f)
                         );
@@ -242,6 +297,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     })
                     .setNegativeButton("ルートリセット", (dialog, which) -> {
                         clearAllPolylines();
+                        googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(current, 18f)
+                      );
+
                     })
                     .show();
         });
@@ -643,20 +701,45 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         Double lng = doc.getDouble("lng");
                         String name = doc.getString("name");
                         String address = doc.getString("address");
+                        String type = doc.getString("type");
+                        String id = doc.getId();
 
                         if (lat != null && lng != null) {
                             LatLng point = new LatLng(lat, lng);
-                            evacuationPoints.add(point);
+                           // evacuationPoints.add(point);
+
+
+//                            shelterdelete.add(new Shelter(
+//                                    id, name, address, type, lat, lng
+//                            ));
+//
+//                            shelters.add(new Shelter(
+//                                    id, name, address, type, lat, lng
+//                            ));
+
+
                         }
                     }
 
+
                     // 🔹 フラグが立っていれば危険回避ルート描画
                     if (isEvacuationRouteRequested) {
-                        totalEvacuationPoints = evacuationPoints.size();
-                        for (LatLng dest : evacuationPoints) {
-                            drawRouteAvoiding(dest);
+
+                        // 作成したリストがnullでなければ問題なくルート探索へ移行
+                        if (shelterdelete != null) {
+
+
+                                // 引数を座標(LatLng)ではなく、Shelter(nearest)に変更
+                                drawRouteAvoiding(shelterdelete);
+
+
+                        } else {
+                            Log.d("Navi", "候補となる避難所がリストにありません。");
                         }
-                        isEvacuationRouteRequested = false; // 描画後リセット
+
+                        // ここで false にすると、失敗した時の「再試行」が止まってしまう可能性があるため
+                        // 成功したことが確定するまでフラグ管理は慎重に行う必要があります
+                        isEvacuationRouteRequested = false;
                     }
 
                 })
@@ -889,7 +972,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtAddress.setText("座標:　"+String.format("Lat: %.5f, Lng: %.5f", info.lat, info.lng));
                 //カメラズーム
                 LatLng pin = new LatLng(info.lat, info.lng);
-                //
+
                  //googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(pin,20));
                 //ボトムシート展開
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
@@ -1076,6 +1159,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         float minDistance = Float.MAX_VALUE;
 
         for (Shelter shelter : shelterCache) {
+            LatLng pos = new LatLng(shelter.lat, shelter.lng);
+            float distance = distanceMeters(current, pos);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = shelter;
+            }
+        }
+        return nearest;
+    }
+
+
+    //危険回避用のリストを使用した近い避難所を出す
+    private Shelter findNearestShelter2() {
+        if (current == null || shelterdelete.isEmpty()) return null;
+
+        Shelter nearest = null;
+        float minDistance = Float.MAX_VALUE;
+
+        for (Shelter shelter : shelterdelete) {
             LatLng pos = new LatLng(shelter.lat, shelter.lng);
             float distance = distanceMeters(current, pos);
 
@@ -1284,6 +1387,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                               int maxTrials,
                                               List<LatLng> dangerPins) {
 
+        // 【門番】すでに実行中なら、新しいリクエストを一切受け付けない
+        if (isProcessingRoute) {
+            Log.d(TAG, "計算中のため、新しいリクエストをスキップしました。");
+            return;
+        }
+
+        // 【1. 門を閉める】これから重い処理（通信）を始める合図
+        isProcessingRoute = true;
+
         // 直通ルートを取得
         new Thread(() -> {
             try {
@@ -1294,9 +1406,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         + "&alternatives=false"
                         + "&key=" + BuildConfig.MAPS_API_KEY;
 
-                org.json.JSONObject jsonObj = requestJson(urlDirect);
+                JSONObject jsonObj = requestJson(urlDirect);
                 if (jsonObj != null) {
-                    org.json.JSONArray routes = jsonObj.getJSONArray("routes");
+                    JSONArray routes = jsonObj.getJSONArray("routes");
                     if (routes.length() > 0) {
                         String encoded = routes.getJSONObject(0)
                                 .getJSONObject("overview_polyline").getString("points");
@@ -1304,15 +1416,22 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         if (!passesThroughDanger(points, dangerPins, 50)) {
                             // 安全なら直ちに描画して終了
                             runOnUiThread(() -> {
-                                com.google.android.gms.maps.model.Polyline poly = googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
+                                Polyline poly = googleMap.addPolyline(new PolylineOptions()
                                         .addAll(points)
                                         .width(12)
-                                        .color(android.graphics.Color.MAGENTA)
+                                        .color(Color.MAGENTA)
                                         .geodesic(true)
                                 );
 
                                 currentPolylines.add(poly);
+                                requestcount++;
+                                Log.d(TAG, requestcount+"回目のリクエスト試行で完了しました。");
+                                isProcessingRoute = false;
+                                requestcount=0;
+
+                                Log.d(TAG, "ルート発見。門を開放します。");
                             });
+
                             return;
                         }
                     }
@@ -1325,8 +1444,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             // 並列で投げるとAPI制限に引っかかるかもしれないから順次同期的に試す
             int tried = 0;
             for (LatLng wp : waypointCandidates) {
-                if (tried >= maxTrials) break;
+                if (tried >= maxTrials) {
+                    isProcessingRoute = false;
+                    requestcount=0;
+
+                    Log.d(TAG, "上限値のため門を開放します。");
+                    break;
+                }
                 tried++;
+                requestcount++;
+                Log.d(TAG, requestcount+"回目のリクエスト試行中です。");
 
                 try {
                     // via: を使うことで必ずその地点を経由させる（経路を強制的に迂回させられる）
@@ -1334,15 +1461,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     String url = "https://maps.googleapis.com/maps/api/directions/json?"
                             + "origin=" + origin.latitude + "," + origin.longitude
                             + "&destination=" + destination.latitude + "," + destination.longitude
-                            + "&waypoints=" + java.net.URLEncoder.encode(waypointParam, "UTF-8")
+                            + "&waypoints=" + URLEncoder.encode(waypointParam, "UTF-8")
                             + "&mode=walking"
                             + "&alternatives=false"
                             + "&key=" + BuildConfig.MAPS_API_KEY;
 
-                    org.json.JSONObject jsonObj = requestJson(url);
+                    JSONObject jsonObj = requestJson(url);
                     if (jsonObj == null) continue;
 
-                    org.json.JSONArray routes = jsonObj.getJSONArray("routes");
+                    JSONArray routes = jsonObj.getJSONArray("routes");
                     if (routes.length() == 0) continue;
 
                     String encoded = routes.getJSONObject(0)
@@ -1352,15 +1479,23 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     // 返ってきたルートが危険ピンと被らなければ採用して終了
                     if (!passesThroughDanger(points, dangerPins, 50)) {
                         runOnUiThread(() -> {
-                            com.google.android.gms.maps.model.Polyline poly = googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
+                            Polyline poly = googleMap.addPolyline(new PolylineOptions()
                                     .addAll(points)
                                     .width(12)
-                                    .color(android.graphics.Color.MAGENTA)
+                                    .color(Color.MAGENTA)
                                     .geodesic(true)
                             );
                             currentPolylines.add(poly);
+                            Log.d(TAG, requestcount+"回リクエストを試行しました。");
+                            requestcount=0;
+
+                            isProcessingRoute = false;
+                            Log.d(TAG, "ルート発見門を開放します。");
                         });
+
                         return;
+
+
                     }
 
                 } catch (Exception e) {
@@ -1371,21 +1506,50 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             /// 全部ダメだったら UI に失敗表示
             // 最後にすべてダメだった場合
             runOnUiThread(() -> {
-                synchronized (routeLock) {
-                    finishedRouteCount++; // この避難所のルート探索完了
+                // 12方位全部試してダメだった（ここに来た）ということは、この避難所は「到達不能」
+                Log.d(TAG, "次の避難所へ");
+                retryCount++;
+                Log.d(TAG, "避難所試行失敗。現在のretryCount: " + retryCount);
 
-                    // すべての避難所探索が終わったか確認
-                    if (finishedRouteCount == totalEvacuationPoints) {
-                        if (successfulRouteCount == 0) {
-                            new AlertDialog.Builder(MainActivity.this)
-                                    .setTitle("危険回避ルートが見つかりません")
-                                    .setMessage("すべての避難所へのルートが危険ピンで回避できませんでした。")
-                                    .setPositiveButton("OK", null)
-                                    .show();
-                        }
-                        // リセットもここでOK
-                        finishedRouteCount = 0;
-                    }
+                // 4か所の避難所をルート探索する避難所数に設定
+                if (retryCount >= 4) {
+                    Log.d("RouteAvoid", "API試行回数が上限(15回)に達しました。");
+                    Toast.makeText(this, "周辺の避難所に対して、安全なルートが見つかりません", Toast.LENGTH_LONG).show();
+                    isProcessingRoute = false;
+                    requestcount=0;
+
+                    Log.d(TAG, "避難所の上限値のため門を開放します。");
+
+                    return;
+                }
+
+
+
+                // 1. 今の避難所（リストの先頭）を削除
+                if (shelterdelete != null && !(shelterdelete.size() <= 0)) {
+                    shelterdelete.remove(0);
+
+                    isProcessingRoute = false;
+
+                    Log.d(TAG, "次の避難所移行のため門を開放します。");
+                    // 2. まだリストに次の避難所があるなら、再トライ！
+                    // これにより、自動的に「2番目に近い避難所」に対して12方位アタックが始まる
+                    drawRouteAvoiding(shelterdelete);
+
+                } else {
+                    // 3. 全ての避難所リストを使い切ってもダメだった場合
+                    new AlertDialog.Builder(MainActivity.this)
+                            .setTitle("避難不可")
+                            .setMessage("全ての避難所へのルートが危険エリアにより遮断されています。周囲の安全を確保してください。")
+                            .setPositiveButton("OK", null)
+                            .show();
+
+                    // カウンターなどをリセット
+                    isProcessingRoute = false;
+                    requestcount=0;
+
+                    Log.d(TAG, "探索失敗のため門を開放します。");
+
                 }
             });
 
@@ -1410,7 +1574,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private void drawRouteAvoiding(LatLng destination) {
+    private void drawRouteAvoiding(List<Shelter> shelterdelete) {
+
+
+
+
+
         // 権限チェック
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 != PackageManager.PERMISSION_GRANTED
@@ -1422,6 +1591,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     1);
             return;
         }
+
+
+        // 2. 今のリストから「一番近い1件」を特定
+        Shelter target = findNearestShelter2();
+        if (target == null){
+            return;
+        }
+
+
+
+        //オブジェクトから座標を取得
+        LatLng destination = new LatLng(target.lat, target.lng);
         // dangerPinsを同期的に作る
         List<LatLng> dangerPins = new ArrayList<>();
         for (Marker m : allMarkers) { // allMarkers には Firestore からロードされたピンも含まれているはずなのだ。
@@ -1459,6 +1640,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             allCandidates.addAll(generateCircularCandidates(dangerCenter, candidateRadius, candidateCount));
                         }
 
+                        //実際は12方位の中継箇所に試行して無理なら終わるので実質直線を含めた13回の試行回数になる
                         tryRouteDirectThenCandidates(origin, destination, allCandidates, 15, dangerPins);
                     }
                 });
@@ -1734,9 +1916,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         String address = doc.getString("address");
                         String type = doc.getString("type");
 
+
+//                        Marker marker = googleMap.addMarker(new MarkerOptions()
+//                                .position(new LatLng(sLat, sLng))
+//                                .title(name));
+
                         shelterCache.add(new Shelter(
                                 id, name, address, type, sLat, sLng
                         ));
+
+                        shelterdelete.add(new Shelter(
+                                id, name, address, type, sLat, sLng
+                        ));
+
+                        shelters.add(new Shelter(
+                                id, name, address, type, sLat, sLng
+                        ));
+
+//                     避難所用保持リスト
+//                      shelterMarkers.add(marker);
+
                     }
 
                     Log.d("MAP", "キャッシュ取得完了: " + shelterCache.size() + "件");
@@ -1752,6 +1951,40 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             p.remove(); // 地図から削除
         }
         currentPolylines.clear(); // リストもクリア
+        if(isProcessingShelterpin==true){
+            // 2. リストの中身を一つずつ取り出して描画
+            for (Shelter shelter : shelterCache) {
+                // 座標を作成
+                LatLng shelterPos = new LatLng(shelter.lat, shelter.lng);
+
+                // 距離を計算（現在地からの場合）
+                // ※ すでに計算済みの distance 変数がある前提
+                float[] results = new float[1];
+                Location.distanceBetween(current.latitude, current.longitude, shelter.lat, shelter.lng, results);
+                int distance = (int) results[0];
+
+                // マーカーを描画
+                Marker marker = googleMap.addMarker(
+                        new MarkerOptions()
+                                .position(shelterPos)
+                                .title(shelter.name + " (" + distance + "m)")
+                                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
+                );
+
+                // 管理用リストに追加
+                shelterMarkers.add(marker);
+
+
+                if (marker != null) {
+                    marker.setTag(shelter);
+                } else  {
+                    Log.d(TAG, "shelterがnull");
+                }
+
+            }
+
+        }
+        isProcessingShelterpin=false;
     }
 
 
