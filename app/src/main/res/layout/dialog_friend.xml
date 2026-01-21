@@ -58,10 +58,10 @@
             android:id="@+id/btnAddFriend"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
-            android:text="追加"
             android:layout_marginStart="8dp"
             android:backgroundTint="#ED6B6B"
-            android:textColor="#FFFFFF"/>
+            android:text="検索"
+            android:textColor="#FFFFFF" />
     </LinearLayout>
 
     <!-- フレンドリスト RecyclerView -->
