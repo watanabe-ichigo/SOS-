@@ -18,6 +18,5 @@ public class LoginActivity extends AppCompatActivity {
             // 単純に前の画面（MainActivity）へ戻る
             getOnBackPressedDispatcher().onBackPressed();
         });
-
     }
 }
