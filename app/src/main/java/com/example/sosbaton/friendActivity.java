@@ -77,10 +77,15 @@ public class friendActivity extends AppCompatActivity {
                     //useridのテキストボックス
                     TextView tx_id = dialogView.findViewById(R.id.tvUserId);
 
-                    //取得した情報をテキストボックスにセット
-                    if (tx_name != null) tx_name.setText(foundUser.getUserName());
-                    if (tx_id != null) tx_id.setText(foundUser.getUserId());
+                    // 取得した情報をテキストボックスにセット
+                    if (tx_name != null) {
+                        tx_name.setText("名前：" + foundUser.getUserName());
+                    }
 
+                    if (tx_id != null) {
+                        // 「固定テキスト」 + 「取得した値」
+                        tx_id.setText("ID：" + foundUser.getUserId());
+                    }
 
                     //カスタムダイアログ表示
                     new AlertDialog.Builder(this)

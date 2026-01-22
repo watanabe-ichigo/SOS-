@@ -4,10 +4,10 @@ public class FriendModel {
       //フレンドリストのデータ保持クラス
 
     //検索結果表示用のuserid
-    public String userId;
+    private String userId;
 
     //検索結果表示用のusername
-    public String userName;
+    private String username;
 
     // Firestoreのために空のコンストラクタが必要
     public FriendModel() {}
@@ -19,7 +19,7 @@ public class FriendModel {
 
     //userNameに値が代入されていない場合
     public String getUserName() {
-        return userName;
+        return username;
     }
 
     // 必要に応じてSetter（値をセットする用）も追加
@@ -28,6 +28,6 @@ public class FriendModel {
     }
 
     public void setUserName(String userName) {
-        this.userName = userName;
+        this.username = userName;
     }
 }

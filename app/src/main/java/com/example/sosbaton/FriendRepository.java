@@ -18,7 +18,7 @@ public class FriendRepository {
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         // Firestoreに「データちょうだい」とリクエストを送る（非同期）
         db.collection("users")
-                .whereEqualTo("userId", id)
+                .whereEqualTo(com.google.firebase.firestore.FieldPath.documentId(), id)
                 .get()
                 .addOnCompleteListener(task -> {
                     List<FriendModel> friends = new ArrayList<>();

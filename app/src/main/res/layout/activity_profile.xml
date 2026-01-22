@@ -171,6 +171,20 @@
         app:layout_constraintBottom_toBottomOf="@id/tvValuePassword" />
 
     <TextView
+        android:id="@+id/tvUserIdDescription"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginEnd="16dp"
+        android:text="＜IDをタップでコピー＞"
+        android:textColor="@android:color/background_dark"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvLabelPassword" />
+
+    <TextView
         android:id="@+id/tvLabelUserId"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -178,8 +192,8 @@
         android:textColor="@android:color/black"
         android:textSize="16sp"
         android:layout_marginStart="16dp"
-        android:layout_marginTop="32dp"
-        app:layout_constraintTop_toBottomOf="@id/tvLabelPassword"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/tvUserIdDescription"
         app:layout_constraintStart_toStartOf="parent" />
 
     <TextView
@@ -192,21 +206,7 @@
         android:textColor="@android:color/black"
         android:textSize="16sp"
         app:layout_constraintBaseline_toBaselineOf="@id/tvLabelUserId"
-        app:layout_constraintEnd_toStartOf="@id/btnCopyUserId"
-        app:layout_constraintHorizontal_bias="0"
-        app:layout_constraintHorizontal_chainStyle="packed"
-        app:layout_constraintStart_toEndOf="@id/tvLabelUserId" />
-
-    <ImageView
-        android:id="@+id/btnCopyUserId"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:contentDescription="copy"
-        android:layout_marginEnd="16dp"
-        app:srcCompat="@android:drawable/ic_menu_save"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@id/tvValueUserId"
-        app:layout_constraintBottom_toBottomOf="@id/tvValueUserId" />
-
+        app:layout_constraintStart_toEndOf="@id/tvLabelUserId" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

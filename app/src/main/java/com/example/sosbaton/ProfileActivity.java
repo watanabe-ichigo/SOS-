@@ -62,8 +62,7 @@ public class ProfileActivity extends AppCompatActivity {
         tvValueEmail = findViewById(R.id.tvValueEmail);
         tvValuePassword = findViewById(R.id.tvValuePassword);
          tvValueuserId = findViewById(R.id.tvValueUserId);
-        ImageView btnCopyUserId = findViewById(R.id.btnCopyUserId);
-
+       
         // Edit ボタン
         ImageView btnEditName = findViewById(R.id.btnEditName);
         ImageView btnEditEmail = findViewById(R.id.btnEditEmail);
