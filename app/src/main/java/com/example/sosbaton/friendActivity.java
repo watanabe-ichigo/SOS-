@@ -92,6 +92,10 @@ public class friendActivity extends AppCompatActivity {
                             .setTitle("フレンド申請")
                             .setView(dialogView)
                             .setPositiveButton("追加", (dialog, which) -> {
+
+                                friendViewModel.sendFriendRequest( foundUser.getUserId());
+
+
                             })
                             .setNegativeButton("キャンセル", null)
                             .show();
@@ -100,6 +104,33 @@ public class friendActivity extends AppCompatActivity {
                 //結果をリセット
                 friendViewModel.clearSearchResult();
             });
+
+
+        // リクエスト送信の結果を監視
+        friendViewModel.getFriendRequestResult().observe(this, result -> {
+            if (result == null) return;
+
+            // 1. ステータスに応じてタイトルを切り替える
+            String title = (result.getStatus() == FriendRequestResult.Status.SUCCESS)
+                    ? "送信完了"
+                    : "リクエスト失敗";
+
+            // 2. 標準のAlertDialogを構築
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle(title)
+                    .setMessage(result.getMessage()) // Repositoryで設定した詳細メッセージ
+                    .setPositiveButton("OK", (dialog, which) -> {
+                        // ボタンを押したときにViewModelのフラグをリセット
+                        friendViewModel.clearFriendRequestResult();
+
+                        // 成功した時だけ画面を閉じる場合はここに追記
+                        if (result.getStatus() == FriendRequestResult.Status.SUCCESS) {
+                            // finish();
+                        }
+                    })
+                    .setCancelable(false) // 戻るボタンなどで勝手に閉じないようにする
+                    .show();
+        });
 
 
 

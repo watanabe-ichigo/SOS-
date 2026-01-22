@@ -615,7 +615,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
             } else if (id == R.id.nav_friend) {
-                startActivity(new Intent(MainActivity.this, friendActivity.class));
+
+                if (myuid != null) {
+                    startActivity(new Intent(MainActivity.this, friendActivity.class));
+                }else{
+                    Toast.makeText(this, "ログインしてください", Toast.LENGTH_SHORT).show();
+                }
+
             } else if (id == R.id.nav_massage) {
                 startActivity(new Intent(MainActivity.this, FriendmsgActivity.class));
             }
