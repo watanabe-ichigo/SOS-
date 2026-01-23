@@ -525,6 +525,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         .get()
                         .addOnSuccessListener(documentSnapshot -> {
 
+                            if (documentSnapshot.exists()) {
+                                String name = documentSnapshot.getString("username");
+
+                                if(name!= null){
+                                    userName = name;
+                                }
+
+
+                            }
                         })
                         .addOnFailureListener(e -> {
                             // Firestoreからの取得に失敗した場合
