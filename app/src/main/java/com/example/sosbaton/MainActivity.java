@@ -11,6 +11,8 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.view.Menu;
+import android.view.MenuItem;
 
 import java.net.URLEncoder;
 import java.util.Map;
@@ -214,6 +216,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         FirebaseApp.initializeApp(this);
         db = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
+
+
 
         //避難ボタン
         ImageButton btn_post = findViewById(R.id.btn_post);
@@ -508,8 +512,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             if (displayName != null && !displayName.isEmpty()) {
                 // ① displayNameが既に設定されている場合
 
-                String welcomeMessage = displayName + "さん、おかえりなさい！";
-                Toast.makeText(this, welcomeMessage, Toast.LENGTH_LONG).show();
+
                 // マップ画面など、アプリのメインコンテンツを表示するのだ。
 
             } else {
@@ -574,6 +577,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         if (document.exists()) {
                             String name = document.getString("username");
                             if (tvUserName != null) tvUserName.setText(name + " さん");
+                            String welcomeMessage = name + "さん、おかえりなさい！";
+                            Toast.makeText(this, welcomeMessage, Toast.LENGTH_LONG).show();
 
                             // 🔹 アイコン表示したい場合
                             // ImageView ivUserIcon = headerView.findViewById(R.id.ivUserIcon);
@@ -599,6 +604,28 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         toggle.syncState();
 
         // --- NavigationView メニュー ---
+        Menu menu = navigationView.getMenu();
+
+        if (currentUser == null) {
+            // 【ゲストモード：ログインを促す構成】
+            menu.findItem(R.id.nav_home).setVisible(true).setTitle("ログイン・登録");
+            menu.findItem(R.id.nav_settings).setVisible(false); // ログアウトは不要
+
+            // ログインが必要な機能は隠しちゃうのだ！
+            menu.findItem(R.id.nav_profile).setVisible(false);
+            menu.findItem(R.id.nav_friend).setVisible(false);
+            menu.findItem(R.id.nav_massage).setVisible(false);
+        } else {
+            // 【ログイン済み：フル機能解放】
+            menu.findItem(R.id.nav_home).setVisible(false); // すでにログインしてるから不要
+            menu.findItem(R.id.nav_settings).setVisible(true).setTitle("ログアウト");
+
+            // 全機能を表示するのだ！
+            menu.findItem(R.id.nav_profile).setVisible(true);
+            menu.findItem(R.id.nav_friend).setVisible(true);
+            menu.findItem(R.id.nav_massage).setVisible(true);
+        }
+
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
             if (id == R.id.nav_home) {
