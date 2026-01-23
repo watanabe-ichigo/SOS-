@@ -11,6 +11,9 @@ import android.widget.ImageButton;
 import android.widget.Button;
 import android.view.LayoutInflater;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import android.widget.Toast;
 import android.widget.TextView;
 
@@ -20,6 +23,8 @@ import com.google.firebase.firestore.WriteBatch;
 
 public class friendActivity extends AppCompatActivity {
 
+    private FriendListAdapter adapter; // ★追加：アダプターの宣言
+
     protected void onCreate(Bundle savedInstanceState) {
         //layout読み込み
         super.onCreate(savedInstanceState);
@@ -27,6 +32,7 @@ public class friendActivity extends AppCompatActivity {
 
         // ViewModelのインスタンス
         FriendViewModel friendViewModel = new ViewModelProvider(this).get(FriendViewModel.class);
+        //
 
 
 
@@ -36,6 +42,30 @@ public class friendActivity extends AppCompatActivity {
         close.setOnClickListener(v -> {
             finish();
         });
+
+
+        // 2. RecyclerViewの設定（★追加）
+        setupRecyclerView();
+
+        // 3. フレンドリストの監視設定（★追加）
+        // Firestoreからデータが届くたびに、ここが自動で実行されます
+        friendViewModel.friendList.observe(this, list -> {
+            if (list != null) {
+                adapter.submitList(list); // アダプターに最新リストを渡す
+            }
+        });
+
+        // 4. 新規追加時のトースト通知（★追加）
+        friendViewModel.newFriendAddedEvent.observe(this, friend -> {
+            if (friend != null) {
+                Toast.makeText(this, friend.getUserName() + "さんとフレンドになりました！", Toast.LENGTH_SHORT).show();
+                friendViewModel.consumeNewFriendEvent(); // 通知済みとしてリセット
+            }
+        });
+
+        // 5. 監視の開始スイッチ（★追加：これがないとデータが流れてきません）
+        friendViewModel.init();
+
 
 
 
@@ -86,6 +116,9 @@ public class friendActivity extends AppCompatActivity {
                         // 「固定テキスト」 + 「取得した値」
                         tx_id.setText("ID：" + foundUser.getUserId());
                     }
+
+
+
 
                     //カスタムダイアログ表示
                     new AlertDialog.Builder(this)
@@ -147,8 +180,12 @@ public class friendActivity extends AppCompatActivity {
         });
 
 
-
-
-
+    }
+    // ★追加：RecyclerViewの初期化メソッド
+    private void setupRecyclerView() {
+        RecyclerView recyclerView = findViewById(R.id.rvFriendList); // XMLのRecyclerViewのIDに合わせてください
+        adapter = new FriendListAdapter();
+        recyclerView.setAdapter(adapter);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
     }
 }

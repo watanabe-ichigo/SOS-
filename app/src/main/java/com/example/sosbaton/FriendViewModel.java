@@ -4,6 +4,8 @@ package com.example.sosbaton;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
+
+import java.util.ArrayList;
 import java.util.List;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -14,6 +16,24 @@ import java.util.List;
 
 public class FriendViewModel extends ViewModel {
    //フレンドリストのViewModelクラス
+
+    // RecyclerViewなどに表示する現在のフレンド一覧ライブデータリスト
+    private final MutableLiveData<List<FriendModel>> _friendList = new MutableLiveData<>(new ArrayList<>());
+    //フレンド一覧を参照させる用のリスト
+    public final LiveData<List<FriendModel>> friendList = _friendList;
+
+    //新しく誰かが追加された瞬間だけ通知するためのライブデータ(処理が終わったらnullを代入して消費)
+    private final MutableLiveData<FriendModel> _newFriendAddedEvent = new MutableLiveData<>();
+
+    //追加通知を参照させる変数
+    public final LiveData<FriendModel> newFriendAddedEvent = _newFriendAddedEvent;
+
+    // 前回のリストサイズを覚えておくための変数(これと比較して「増えたかどうか」を判定)
+    private int previousListSize = -1;
+
+    // 監視の「権利書」を保持する変数
+    private com.google.firebase.firestore.ListenerRegistration friendListener;
+
 
     //FriendRepositoryクラスのインスタンス
     private final FriendRepository repository = new FriendRepository();
@@ -84,5 +104,59 @@ public class FriendViewModel extends ViewModel {
     //リクエスト用のライブデータの結果をリセット
     public void clearFriendRequestResult() {
         _friendRequestResult.setValue(null);
+    }
+
+
+    /**
+     * 監視を開始するメソッド
+     */
+    public void init() {
+        // すでに監視中なら二重に登録しないようにする
+        if (friendListener != null) return;
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return;
+
+        String myUid = user.getUid();
+
+        // Repositoryの監視メソッドを呼び出す
+        friendListener = repository.observeFriendList(myUid, updatedList -> {
+
+            // 【重要】追加判定ロジック
+            // 初回（previousListSizeが-1）は無視し、2回目以降の更新でサイズが増えていたら「追加」
+            if (previousListSize != -1 && updatedList.size() > previousListSize) {
+                // リストの最後に入った人が「新しく追加されたフレンド」
+                FriendModel newlyAdded = updatedList.get(updatedList.size() - 1);
+
+                // Activityに通知を送る（Event発火）
+                _newFriendAddedEvent.postValue(newlyAdded);
+            }
+
+            // 1. リスト本体を更新（ActivityのRecyclerViewが動く）
+            _friendList.postValue(updatedList);
+
+            // 2. 現在のサイズを記録（次回の比較用）
+            previousListSize = updatedList.size();
+        });
+    }
+
+    /**
+     * 通知を表示し終わった後に呼ぶ（二重通知防止）
+     */
+    public void consumeNewFriendEvent() {
+        _newFriendAddedEvent.setValue(null);
+    }
+
+    /**
+     * ViewModelが破棄されるときに呼ばれる（後片付け）
+     */
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+        // 監視を止めてメモリリークを防ぐ
+        if (friendListener != null) {
+            friendListener.remove();
+            friendListener = null;
+        }
     }
 }
