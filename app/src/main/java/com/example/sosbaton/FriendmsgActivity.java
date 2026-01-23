@@ -17,6 +17,9 @@ import com.google.firebase.firestore.ListenerRegistration;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.util.Log;
+
+
 public class FriendmsgActivity extends AppCompatActivity {
 
     // --- UI ---
@@ -87,10 +90,13 @@ public class FriendmsgActivity extends AppCompatActivity {
         if (myUid == null) return;
 
         requestListener = db.collection("friend_requests")
-                .whereEqualTo("to", myUid)
+                .whereEqualTo("to_id", myUid)
                 .whereEqualTo("status", "pending")
                 .addSnapshotListener((snapshots, e) -> {
 
+                    for (DocumentSnapshot doc : snapshots) {
+                        Log.d("DEBUG", doc.getData().toString());
+                    }
                     if (e != null || snapshots == null) return;
 
                     requestList.clear();

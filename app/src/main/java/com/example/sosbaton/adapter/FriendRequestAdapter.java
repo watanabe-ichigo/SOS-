@@ -53,7 +53,7 @@ public class FriendRequestAdapter
 
         FriendRequest req = list.get(position);
 
-        holder.tvUser.setText(req.getFrom());
+        holder.tvUser.setText(req.getFrom_name());
 
         // 承認
         holder.btnAccept.setOnClickListener(v -> {
@@ -81,22 +81,32 @@ public class FriendRequestAdapter
     private void accept(FriendRequest req) {
 
         WriteBatch batch = db.batch();
-        HashMap<String, Object> empty = new HashMap<>();
+        // 自分の friend_list に追加するデータ
+        HashMap<String, Object> friendForMe = new HashMap<>();
+        friendForMe.put("uid", req.getFrom_id());
+        friendForMe.put("name", req.getFrom_name());
+        friendForMe.put("added_at", com.google.firebase.Timestamp.now());
+
+        // 相手の friend_list に追加するデータ
+        HashMap<String, Object> friendForOther = new HashMap<>();
+        friendForOther.put("uid", myUid);
+        friendForOther.put("name", req.getTo_name()); // ← あとで直す
+        friendForOther.put("added_at", com.google.firebase.Timestamp.now());
 
         batch.set(
                 db.collection("users")
                         .document(myUid)
                         .collection("friend_list")
-                        .document(req.getFrom()),
-                empty
+                        .document(req.getFrom_id()),
+                friendForMe
         );
 
         batch.set(
                 db.collection("users")
-                        .document(req.getFrom())
+                        .document(req.getFrom_id())
                         .collection("friend_list")
                         .document(myUid),
-                empty
+                friendForOther
         );
 
         batch.update(
