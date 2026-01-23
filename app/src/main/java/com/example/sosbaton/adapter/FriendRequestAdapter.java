@@ -55,6 +55,12 @@ public class FriendRequestAdapter
 
         holder.tvUser.setText(req.getFrom_name());
 
+        // コメント
+        holder.tvMessage.setText(
+                req.getFrom_name() + " さんからフレンド申請が届きました"
+        );
+
+
         // 承認
         holder.btnAccept.setOnClickListener(v -> {
 
@@ -125,11 +131,13 @@ public class FriendRequestAdapter
     static class ViewHolder extends RecyclerView.ViewHolder {
 
         TextView tvUser;
+        TextView tvMessage;
         Button btnAccept, btnReject;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvUser = itemView.findViewById(R.id.tvUser);
+            tvMessage = itemView.findViewById(R.id.tvMessage);
             btnAccept = itemView.findViewById(R.id.btnAccept);
             btnReject = itemView.findViewById(R.id.btnReject);
         }
