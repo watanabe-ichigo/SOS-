@@ -70,6 +70,16 @@ public class StartActivity extends AppCompatActivity {
 
         //戻るボタン処理
         backButton.setOnClickListener(v -> {
+            // ゲストモードとして MainActivity を起動するのだ
+            Intent intent = new Intent(StartActivity.this, MainActivity.class);
+
+            // 大事：これまでのアクティビティ履歴をクリアして、
+            // まっさらな状態で MainActivity を立ち上げるのだ！
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+            startActivity(intent);
+
+            // 自分（ログイン画面）はもう用済みだから消えるのだ！
             finish();
         });
 

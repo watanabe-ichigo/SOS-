@@ -1,12 +1,16 @@
 package com.example.sosbaton;
 
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -78,6 +82,16 @@ public class ProfileActivity extends AppCompatActivity {
 
         // ユーザー情報読み込み
         loadUserInfo();
+
+        //共有ボタン
+        Button btnShare = findViewById(R.id.btnShareId);
+
+        btnShare.setOnClickListener(v->{
+
+            shareText(this, getUid());
+
+
+        });
     }
 
     private void loadUserInfo() {
@@ -428,4 +442,22 @@ public class ProfileActivity extends AppCompatActivity {
                 }
         );
     }
+
+    //共有メソッド
+    private void shareText(Context context, String text) {
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TEXT, text);
+
+        context.startActivity(
+                Intent.createChooser(intent, "共有先を選択")
+        );
+    }
+
+
+    private String getUid() {
+        return FirebaseAuth.getInstance().getUid();
+    }
+
+
 }

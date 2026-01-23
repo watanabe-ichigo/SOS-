@@ -201,12 +201,27 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
-        android:layout_marginEnd="8dp"
+        android:layout_marginEnd="16dp"
         android:text="ABCDE-12345"
         android:textColor="@android:color/black"
         android:textSize="16sp"
         app:layout_constraintBaseline_toBaselineOf="@id/tvLabelUserId"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/tvLabelUserId" />
+
+    <Button
+        android:id="@+id/btnShareId"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginTop="40dp"
+        android:layout_marginEnd="32dp"
+        android:layout_marginBottom="32dp"
+        android:backgroundTint="#F66B6B"
+        android:text="ユーザーIDを共有する"
+        android:textColor="@android:color/white"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/tvLabelUserId" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
