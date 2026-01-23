@@ -69,9 +69,9 @@ import com.google.firebase.firestore.WriteBatch;
 import com.google.android.gms.maps.model.GroundOverlay;
 import com.google.android.gms.maps.model.GroundOverlayOptions;
 import android.animation.ValueAnimator;
-import android.location.Location;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.firebase.firestore.DocumentChange;
+import com.google.firebase.firestore.SetOptions;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.firestore.DocumentSnapshot; // これも必要です
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -465,11 +465,45 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         if (currentUser != null) {
             // ログイン状態が維持されている
+
             myuid = user.getUid();
 
             // 現在のユーザー名（displayName）をチェックする
             String displayName = currentUser.getDisplayName();
             userName = displayName;
+
+            db.collection("users")
+                    .document(myuid)
+                    .get()
+                    .addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() { // ← 型を明示
+                        @Override
+                        public void onSuccess(DocumentSnapshot documentSnapshot) { // ← ここで変数を定義
+                            if (documentSnapshot.exists()) {
+                                // 1. userIdフィールドが存在するか確認
+                                if (!documentSnapshot.contains("userId")) {
+                                    // フィールドがない場合は作成（マージ）
+                                    Map<String, Object> updateData = new HashMap<>();
+                                    updateData.put("userId", myuid);
+
+                                    db.collection("users").document(myuid)
+                                            .set(updateData, SetOptions.merge());
+                                }
+
+
+                            } else {
+                                // ドキュメント自体が存在しない場合
+                                Log.d("Firestore", "No such document");
+                            }
+
+                        }
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e("Firestore", "Error getting document", e);
+                    });
+
+
+
+
 
             if (displayName != null && !displayName.isEmpty()) {
                 // ① displayNameが既に設定されている場合
@@ -487,20 +521,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         .document(currentUid)
                         .get()
                         .addOnSuccessListener(documentSnapshot -> {
-                            String registeredUsername = documentSnapshot.getString("username"); // データベースからusernameを取得する
 
-                            if (registeredUsername != null) {
-                                // usernameがデータベースにあった場合
-                                userName = registeredUsername;
-
-                                // FirebaseのdisplayNameも更新して、次回以降はすぐに取得できるようにする
-                                updateFirebaseDisplayName(currentUser, registeredUsername);
-
-                            } else {
-                                // データベースにもusernameがない場合
-                                String welcomeMessage = "ようこそ、名無しさん！";
-                                Toast.makeText(this, welcomeMessage, Toast.LENGTH_LONG).show();
-                            }
                         })
                         .addOnFailureListener(e -> {
                             // Firestoreからの取得に失敗した場合
@@ -594,7 +615,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
             } else if (id == R.id.nav_friend) {
-                startActivity(new Intent(MainActivity.this, friendActivity.class));
+
+                if (myuid != null) {
+                    startActivity(new Intent(MainActivity.this, friendActivity.class));
+                }else{
+                    Toast.makeText(this, "ログインしてください", Toast.LENGTH_SHORT).show();
+                }
+
             } else if (id == R.id.nav_massage) {
                 startActivity(new Intent(MainActivity.this, FriendmsgActivity.class));
             }

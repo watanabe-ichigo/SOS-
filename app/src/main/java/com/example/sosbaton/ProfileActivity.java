@@ -36,7 +36,7 @@ public class ProfileActivity extends AppCompatActivity {
     private FirebaseAuth auth;
     private FirebaseFirestore db;
 
-    private TextView tvUserNameTop, tvValueName, tvValueEmail, tvValuePassword;
+    private TextView tvUserNameTop, tvValueName, tvValueEmail, tvValuePassword,tvValueuserId;
 
     private FirebaseStorage storage;
     private ImageView imageUserIcon;
@@ -61,6 +61,7 @@ public class ProfileActivity extends AppCompatActivity {
         tvValueName = findViewById(R.id.tvValueName);
         tvValueEmail = findViewById(R.id.tvValueEmail);
         tvValuePassword = findViewById(R.id.tvValuePassword);
+         tvValueuserId = findViewById(R.id.tvValueUserId);
 
         // Edit ボタン
         ImageView btnEditName = findViewById(R.id.btnEditName);
@@ -88,6 +89,23 @@ public class ProfileActivity extends AppCompatActivity {
 
         tvValueEmail.setText(email);
         tvValuePassword.setText("●●●●●●●●");
+
+        if (tvValueuserId != null) {
+            tvValueuserId.setText(uid);
+        }
+
+        if (tvValueuserId != null) {
+            tvValueuserId.setOnClickListener(v -> {
+                String idToCopy = tvValueuserId.getText().toString();
+
+                android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
+                        getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+                android.content.ClipData clip = android.content.ClipData.newPlainText("UserID", idToCopy);
+                clipboard.setPrimaryClip(clip);
+
+                Toast.makeText(this, "ユーザーIDをコピーしました", Toast.LENGTH_SHORT).show();
+            });
+        }
 
         db.collection("users").document(uid)
                 .get()

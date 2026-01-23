@@ -1,129 +1,154 @@
 package com.example.sosbaton;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import android.app.AlertDialog;
 import android.os.Bundle;
-import android.widget.Button;
+import android.util.Log;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.Button;
+import android.view.LayoutInflater;
+import androidx.lifecycle.ViewModelProvider;
 import android.widget.Toast;
+import android.widget.TextView;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.firestore.FieldValue;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.WriteBatch;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.function.Consumer;
 
 public class friendActivity extends AppCompatActivity {
 
-    FirebaseFirestore db;
-
-    @Override
     protected void onCreate(Bundle savedInstanceState) {
+        //layout読み込み
         super.onCreate(savedInstanceState);
         setContentView(R.layout.dialog_friend);
 
-        db = FirebaseFirestore.getInstance();
+        // ViewModelのインスタンス
+        FriendViewModel friendViewModel = new ViewModelProvider(this).get(FriendViewModel.class);
 
-        ImageButton close = findViewById(R.id.btnClose);
-        EditText etFriendUserId = findViewById(R.id.etFriendUserId);
-        Button btnAddFriend = findViewById(R.id.btnAddFriend);
 
-        btnAddFriend.setOnClickListener(v -> {
 
-            String inputUid = etFriendUserId.getText().toString().trim();
 
-            if (inputUid.isEmpty()) {
-                Toast.makeText(this, "ユーザーIDを入力してください", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-            if (user == null) {
-                Toast.makeText(this, "ログインしてください", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            String myUid = user.getUid();
-
-            if (inputUid.equals(myUid)) {
-                Toast.makeText(this, "自分自身は追加できません", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // ① すでにフレンド？
-            checkAlreadyFriend(myUid, inputUid, isFriend -> {
-                if (isFriend) {
-                    Toast.makeText(this, "すでにフレンドです", Toast.LENGTH_SHORT).show();
-                } else {
-                    // ② すでに申請済み？
-                    checkAlreadyRequested(myUid, inputUid, requested -> {
-                        if (requested) {
-                            Toast.makeText(this, "すでに申請しています", Toast.LENGTH_SHORT).show();
-                        } else {
-                            // ③ 申請送信（ここだけ）
-                            sendFriendRequest(myUid, inputUid);
-                        }
-                    });
-                }
-            });
+        //閉じる
+        ImageButton close =findViewById(R.id.btnClose);
+        close.setOnClickListener(v -> {
+            finish();
         });
 
-        close.setOnClickListener(v -> finish());
-    }
 
-    // -----------------------
-    // フレンド申請送信
-    // -----------------------
-    private void sendFriendRequest(String myUid, String friendUid) {
 
-        Map<String, Object> request = new HashMap<>();
-        request.put("from", myUid);
-        request.put("to", friendUid);
-        request.put("status", "pending");
-        request.put("created_at", FieldValue.serverTimestamp());
+        EditText editText = findViewById(R.id.etFriendUserId);
+        //検索ボタン
+        Button add = findViewById(R.id.btnAddFriend);
 
-        db.collection("friend_requests")
-                .add(request)
-                .addOnSuccessListener(doc -> {
-                    Toast.makeText(this, "フレンド申請を送信しました", Toast.LENGTH_SHORT).show();
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(this, "申請に失敗しました", Toast.LENGTH_SHORT).show();
-                });
-    }
+        LayoutInflater inflater = LayoutInflater.from(this);
 
-    // -----------------------
-    // すでに申請済みか
-    // -----------------------
-    private void checkAlreadyRequested(String myUid, String friendUid,
-                                       Consumer<Boolean> callback) {
 
-        db.collection("friend_requests")
-                .whereEqualTo("from", myUid)
-                .whereEqualTo("to", friendUid)
-                .whereEqualTo("status", "pending")
-                .get()
-                .addOnSuccessListener(qs -> {
-                    callback.accept(!qs.isEmpty());
-                });
-    }
 
-    // -----------------------
-    // すでにフレンドか
-    // -----------------------
-    private void checkAlreadyFriend(String myUid, String friendUid,
-                                    Consumer<Boolean> callback) {
 
-        db.collection("users")
-                .document(myUid)
-                .collection("friend_list")
-                .document(friendUid)
-                .get()
-                .addOnSuccessListener(doc -> {
-                    callback.accept(doc.exists());
-                });
+
+            // 検索結果待ちobserveで結果監視
+            friendViewModel.getSearchResults().observe(this, friends -> {
+                //通信がまだ終わっていない
+                if (friends == null) return;
+
+                // ヒットしなかった場合
+                if (friends.isEmpty()) {
+                    //no_hitダイアログを表示
+                    new AlertDialog.Builder(this)
+                            .setTitle("検索結果")
+                            .setMessage("入力されたIDのユーザーは見つかりませんでした。\nIDが正しいか確認してください。")
+                            .setPositiveButton("OK", null) // 閉じるだけのボタン
+                            .show();
+                }else{
+                    //ヒットした処理
+
+                    //ダイアログのリセット
+                    View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_search_user, null);
+
+                    //リストの0を取得だが結果は1件になるのでどっちにしろ
+                    FriendModel foundUser = friends.get(0);
+
+                    //usernameのテキストボックス
+                    TextView tx_name = dialogView.findViewById(R.id.tvUserName);
+
+                    //useridのテキストボックス
+                    TextView tx_id = dialogView.findViewById(R.id.tvUserId);
+
+                    // 取得した情報をテキストボックスにセット
+                    if (tx_name != null) {
+                        tx_name.setText("名前：" + foundUser.getUserName());
+                    }
+
+                    if (tx_id != null) {
+                        // 「固定テキスト」 + 「取得した値」
+                        tx_id.setText("ID：" + foundUser.getUserId());
+                    }
+
+                    //カスタムダイアログ表示
+                    new AlertDialog.Builder(this)
+                            .setTitle("フレンド申請")
+                            .setView(dialogView)
+                            .setPositiveButton("追加", (dialog, which) -> {
+
+                                friendViewModel.sendFriendRequest( foundUser.getUserId());
+
+
+                            })
+                            .setNegativeButton("キャンセル", null)
+                            .show();
+                }
+
+                //結果をリセット
+                friendViewModel.clearSearchResult();
+            });
+
+
+        // リクエスト送信の結果を監視
+        friendViewModel.getFriendRequestResult().observe(this, result -> {
+            if (result == null) return;
+
+            // 1. ステータスに応じてタイトルを切り替える
+            String title = (result.getStatus() == FriendRequestResult.Status.SUCCESS)
+                    ? "送信完了"
+                    : "リクエスト失敗";
+
+            // 2. 標準のAlertDialogを構築
+            new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle(title)
+                    .setMessage(result.getMessage()) // Repositoryで設定した詳細メッセージ
+                    .setPositiveButton("OK", (dialog, which) -> {
+                        // ボタンを押したときにViewModelのフラグをリセット
+                        friendViewModel.clearFriendRequestResult();
+
+                        // 成功した時だけ画面を閉じる場合はここに追記
+                        if (result.getStatus() == FriendRequestResult.Status.SUCCESS) {
+                            // finish();
+                        }
+                    })
+                    .setCancelable(false) // 戻るボタンなどで勝手に閉じないようにする
+                    .show();
+        });
+
+
+
+
+
+
+        // 3. ボタンの中身は「依頼を出すだけ」にする
+        add.setOnClickListener(v -> {
+
+            String inputid = editText.getText().toString();
+            if (!inputid.isEmpty()) {
+                friendViewModel.findFriend(inputid); // 依頼を投げるだけ！
+            }
+        });
+
+
+
+
+
     }
 }
