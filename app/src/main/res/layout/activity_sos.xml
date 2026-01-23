@@ -5,7 +5,6 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
 
-
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="0dp"
@@ -19,7 +18,6 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <!-- 戻るボタン（左寄せ） -->
             <ImageButton
                 android:id="@+id/backButton"
                 android:layout_width="40dp"
@@ -31,7 +29,6 @@
                 android:src="@drawable/baseline_arrow_back_ios_new_24"
                 app:tint="@android:color/white" />
 
-            <!-- タイトル（画面中央） -->
             <TextView
                 android:id="@+id/toolbarTitle"
                 android:layout_width="wrap_content"
@@ -41,24 +38,34 @@
                 android:textColor="#FFF"
                 android:textSize="22sp"
                 android:textStyle="bold" />
-
         </RelativeLayout>
-
     </androidx.appcompat.widget.Toolbar>
 
-    <ImageButton
-        android:id="@+id/phone"
+    <TextView
+        android:id="@+id/comment"
         android:layout_width="0dp"
-        android:layout_height="80dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="76dp"
-        android:layout_weight="1"
-        android:background="@android:color/transparent"
-        android:backgroundTint="#FF0000"
-        android:src="@drawable/phone"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        android:text="※各ボタンをタップすると電話アプリに遷移します"
+        android:textColor="#000"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent" />
 
+    <Button
+        android:id="@+id/btnHowToUse"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:backgroundTint="#666666"
+        android:text="災害用ボタンの使い方"
+        android:textColor="#FFFFFF"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/comment" />
 
     <LinearLayout
         android:id="@+id/buttonContainer"
@@ -67,52 +74,52 @@
         android:orientation="vertical"
         android:padding="16dp"
         android:background="@drawable/button_border"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/btnHowToUse"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintVertical_bias="0.35">
+        app:layout_constraintVertical_bias="0.3">
 
         <Button
             android:id="@+id/EmergencyButton"
-            android:layout_width="229dp"
-            android:layout_height="101dp"
+            android:layout_width="260dp"
+            android:layout_height="80dp"
+            android:layout_margin="12dp"
             android:background="@drawable/rectangle"
-            android:text="警察"
+            android:text="警察 (110)"
             android:textColor="@android:color/white"
-            android:textSize="40sp"
-            android:layout_marginBottom="20dp"
-            android:layout_marginTop="20dp"
-            android:layout_marginLeft="30dp"
-            android:layout_marginRight="30dp"/>
+            android:textSize="30sp" />
 
         <Button
             android:id="@+id/HelpButton"
-            android:layout_width="229dp"
-            android:layout_height="101dp"
+            android:layout_width="260dp"
+            android:layout_height="80dp"
+            android:layout_margin="12dp"
             android:background="@drawable/rectangle"
-            android:text="消防・救急"
+            android:text="消防・救急 (119)"
             android:textColor="@android:color/white"
-            android:textSize="40sp"
-            android:layout_marginBottom="20dp"
-            android:layout_marginTop="20dp"
-            android:layout_marginLeft="30dp"
-            android:layout_marginRight="30dp"/>
+            android:textSize="30sp" />
+
+        <Button
+            android:id="@+id/DisasterButton"
+            android:layout_width="260dp"
+            android:layout_height="80dp"
+            android:layout_margin="12dp"
+            android:background="@drawable/rectangle"
+            android:backgroundTint="#FF9800"
+            android:text="災害用 (171)"
+            android:textColor="@android:color/white"
+            android:textSize="30sp" />
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/comment"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="516dp"
-        android:text="※警察または消防・救急ボタンをタップすると電話アプリに遷移します"
-        android:textColor="#000"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
+    <ImageView
+        android:id="@+id/phoneIcon"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginEnd="24dp"
+        android:src="@drawable/phone"
+        app:layout_constraintBottom_toBottomOf="@id/btnHowToUse"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/btnHowToUse" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

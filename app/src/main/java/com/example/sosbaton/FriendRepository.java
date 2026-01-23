@@ -140,16 +140,102 @@ public class FriendRepository {
 
     // 結果を流し続けるメソッド（フレンドリストの監視）
     // 戻り値を ListenerRegistration に変更するだけ！
-    public com.google.firebase.firestore.ListenerRegistration observeFriendList(String myUid, Consumer<List<FriendModel>> onUpdate) {
+    public com.google.firebase.firestore.ListenerRegistration observeFriendListWithDetails(String myUid, OnFriendsReadyListener listener) {
+
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         return db.collection("users").document(myUid).collection("friend_list")
                 .addSnapshotListener((snapshots, e) -> {
                     if (e != null || snapshots == null) return;
 
-                    List<FriendModel> updatedList = snapshots.toObjects(FriendModel.class);
-                    onUpdate.accept(updatedList);
+                    List<DocumentSnapshot> friendDocs = snapshots.getDocuments();
+                    if (friendDocs.isEmpty()) {
+                        listener.onReady(new ArrayList<>());
+                        return;
+                    }
+
+                    List<FriendModel> fullInfoList = new ArrayList<>();
+                    // ✅ 修正ポイント：AtomicIntegerを使ってカウントを安全に行う
+                    java.util.concurrent.atomic.AtomicInteger counter = new java.util.concurrent.atomic.AtomicInteger(0);
+                    int totalFriends = friendDocs.size();
+
+                    for (DocumentSnapshot doc : friendDocs) {
+                        String friendId = doc.getId();
+
+                        db.collection("users").document(friendId).get()
+                                .addOnSuccessListener(userProfile -> {
+                                    if (userProfile.exists()) {
+                                        FriendModel friend = new FriendModel();
+                                        friend.setUserId(friendId);
+                                        friend.setUserName(userProfile.getString("username"));
+                                        String shelterId = userProfile.getString("currentBoardId");
+                                        com.google.firebase.Timestamp ts = userProfile.getTimestamp("evacuationTime");
+                                        if (ts != null) {
+                                            long diffSeconds = com.google.firebase.Timestamp.now().getSeconds() - ts.getSeconds();
+                                            String timeLabel;
+
+                                            if (diffSeconds < 60) {
+                                                timeLabel = "たった今";
+                                            } else if (diffSeconds < 3600) {
+                                                timeLabel = (diffSeconds / 60) + "分前";
+                                            } else if (diffSeconds < 86400) {
+                                                timeLabel = (diffSeconds / 3600) + "時間前";
+                                            } else {
+                                                // 1日以上経った場合は日付を表示
+                                                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MM/dd HH:mm", java.util.Locale.JAPAN);
+                                                timeLabel = sdf.format(ts.toDate());
+                                            }
+                                            friend.setEvacuatedAt(timeLabel); // 計算済みの文字列をセット
+                                        } else {
+                                            friend.setEvacuatedAt("不明");
+                                        }
+
+                                        if (shelterId != null && !shelterId.isEmpty()) {
+                                            db.collection("shelters").document(shelterId).get()
+                                                    .addOnSuccessListener(shelterDoc -> {
+                                                        // 避難所名を取得してセット
+                                                        friend.setCurrentBoardId(shelterDoc.exists() ? shelterDoc.getString("name") : "不明な避難所");
+
+
+
+                                                        // ✅ カウントを進めてチェック
+                                                        fullInfoList.add(friend);
+                                                        if (counter.incrementAndGet() == totalFriends) {
+                                                            listener.onReady(fullInfoList);
+                                                        }
+                                                    })
+                                                    .addOnFailureListener(err -> {
+                                                        friend.setCurrentBoardId("情報取得エラー");
+                                                        fullInfoList.add(friend);
+                                                        if (counter.incrementAndGet() == totalFriends) listener.onReady(fullInfoList);
+                                                    });
+                                        } else {
+                                            friend.setCurrentBoardId("未避難");
+                                            fullInfoList.add(friend);
+                                            if (counter.incrementAndGet() == totalFriends) listener.onReady(fullInfoList);
+                                        }
+                                    } else {
+                                        // ユーザー自体がいなかった場合もカウントは進める
+                                        if (counter.incrementAndGet() == totalFriends) {
+                                            listener.onReady(fullInfoList);
+                                        }
+                                    }
+                                });
+                    }
                 });
+    }
+
+    // 完了チェック用の補助メソッド（重複コードを避けるため）
+    private void checkAndFinish(List<FriendModel> list, FriendModel friend, int total, OnFriendsReadyListener listener) {
+        list.add(friend);
+        if (list.size() == total) {
+            listener.onReady(list);
+        }
+    }
+
+    //インタフェース:フレンド一覧の準備が完了したら呼ばれる
+    public interface OnFriendsReadyListener {
+        void onReady(List<FriendModel> friends);
     }
 
 

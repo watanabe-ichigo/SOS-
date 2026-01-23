@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#FFFFFF">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:gravity="center"
+        android:text="災害用171（こえの伝言板）の使い方"
+        android:textColor="#D32F2F"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+        <TextView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@android:drawable/presence_online"
+            android:backgroundTint="#666666"
+            android:text="1"
+            android:textColor="#FFFFFF"
+            android:gravity="center"
+            android:textStyle="bold"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="きいろのボタン[災害用]をおす"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="#222222"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="44dp"
+        android:layout_marginBottom="16dp"
+        android:background="#F9F9F9"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="どっちか選んでボタンを押すよ"
+            android:textColor="#666666"
+            android:textSize="14sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="●「1」自分の無事を教える（録音）"
+            android:textColor="#D32F2F"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="●「2」家族の声を聞く（再生）"
+            android:textColor="#1976D2"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+        <TextView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@android:drawable/presence_online"
+            android:backgroundTint="#666666"
+            android:text="2"
+            android:textColor="#FFFFFF"
+            android:gravity="center"
+            android:textStyle="bold"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="おうちの「電話番号」を押す"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="#222222"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+        <TextView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@android:drawable/presence_online"
+            android:backgroundTint="#666666"
+            android:text="3"
+            android:textColor="#FFFFFF"
+            android:gravity="center"
+            android:textStyle="bold"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:text="声を出す、または聞く"
+            android:textSize="17sp"
+            android:textStyle="bold"
+            android:textColor="#222222"/>
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_close_dialog"
+        android:layout_width="160dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="24dp"
+        android:text="わかった！"
+        android:backgroundTint="#666666"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"/>
+</LinearLayout>

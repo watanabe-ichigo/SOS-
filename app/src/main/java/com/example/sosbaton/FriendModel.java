@@ -9,18 +9,35 @@ public class FriendModel {
     //検索結果表示用のusername
     private String username;
 
+    //現状の避難場所id
+    private String currentBoardId;
+
+    //避難時間
+    private String evacuatedAt;
+
     // Firestoreのために空のコンストラクタが必要
     public FriendModel() {}
 
-    //userIdに値が代入されていない場合
+    //userIdを渡していく
     public String getUserId() {
         return userId;
     }
 
-    //userNameに値が代入されていない場合
+    //userNameを渡していく
     public String getUserName() {
         return username;
     }
+
+    //currentBoardIdを渡していく
+    public String getCurrentBoardId() {
+        return currentBoardId;
+    }
+
+    //evacuatedAtを渡していく
+    public String getEvacuatedAt() {
+        return evacuatedAt;
+    }
+
 
     // 必要に応じてSetter（値をセットする用）も追加
     public void setUserId(String userId) {
@@ -29,5 +46,13 @@ public class FriendModel {
 
     public void setUserName(String userName) {
         this.username = userName;
+    }
+
+    public void setCurrentBoardId(String currentBoardId) {
+        this.currentBoardId = currentBoardId;
+    }
+
+    public void setEvacuatedAt(String evacuatedAt) {
+        this.evacuatedAt = evacuatedAt;
     }
 }

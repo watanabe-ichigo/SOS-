@@ -12,6 +12,7 @@ import java.util.List;
 
 public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.FriendViewHolder> {
 
+    //リストに表示する用のフレンドリスト
     private List<FriendModel> friendList = new ArrayList<>();
 
     // リストの更新（nullチェック付き）
@@ -24,6 +25,7 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
         notifyDataSetChanged();
     }
 
+    //自作XML読み込み
     @NonNull
     @Override
     public FriendViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -58,9 +60,19 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
         }
         */
 
-        // 現在はまだデータが揃っていないとのことなので、固定で「情報なし」にするか非表示に
-        holder.tvCurrentBoard.setText("避難場所情報: 未取得");
-        holder.tvAddedAt.setVisibility(View.GONE); // 日時は一旦隠す
+        String boardId = friend.getCurrentBoardId();
+        if (boardId != null && !boardId.isEmpty()) {
+            holder.tvCurrentBoard.setText("現在の避難場所: " + boardId);
+            holder.tvCurrentBoard.setVisibility(View.VISIBLE);
+        } else {
+            // まだ避難していない、または情報がない場合
+            holder.tvCurrentBoard.setText("避難情報: 未設定");
+            holder.tvCurrentBoard.setVisibility(View.VISIBLE);
+        }
+
+        String at = (friend.getEvacuatedAt() != null) ? friend.getEvacuatedAt() : "不明";
+        holder.tvAddedAt.setText("避難時間: " + at);
+
 
         // --- ボタン類のクリックリスナー（空で準備だけしておく） ---
         holder.btnDelete.setOnClickListener(v -> {
@@ -68,7 +80,38 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
         });
 
         holder.btnCopy.setOnClickListener(v -> {
-            // TODO: クリップボードへのコピー処理
+            // 1. システムのコピー機能（ClipboardManager）を取得
+            android.content.Context context = v.getContext();
+            android.content.ClipboardManager clipboard = (android.content.ClipboardManager)
+                    context.getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+
+            // 2. コピーするデータを作成
+            android.content.ClipData clip = android.content.ClipData.newPlainText("UserID", friend.getUserId());
+
+            // 3. クリップボードにセット
+            if (clipboard != null) {
+                clipboard.setPrimaryClip(clip);
+
+
+                // 1. Snackbarを作成
+                com.google.android.material.snackbar.Snackbar snackbar =
+                        com.google.android.material.snackbar.Snackbar.make(v, "IDをコピーしました", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT);
+
+                // 2. Viewを取得
+                View snackbarView = snackbar.getView();
+
+                // 3. レイアウトパラメータを FrameLayout.LayoutParams として取得し、位置を上に設定
+                // ※Snackbarの内部構造を利用したハック的な方法です
+                android.view.ViewGroup.LayoutParams lp = snackbarView.getLayoutParams();
+                if (lp instanceof android.widget.FrameLayout.LayoutParams) {
+                    android.widget.FrameLayout.LayoutParams params = (android.widget.FrameLayout.LayoutParams) lp;
+                    params.gravity = android.view.Gravity.TOP; // ここで上部を指定
+                    params.topMargin = 150;                   // 上からのマージン
+                    snackbarView.setLayoutParams(params);
+                }
+
+                snackbar.show();
+            }
         });
     }
 
@@ -88,7 +131,6 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
             tvCurrentBoard = itemView.findViewById(R.id.tvCurrentBoard);
             tvAddedAt = itemView.findViewById(R.id.tvAddedAt);
             btnDelete = itemView.findViewById(R.id.btnDelete);
-            btnEye = itemView.findViewById(R.id.btnEye);
             btnCopy = itemView.findViewById(R.id.btnCopy);
         }
     }

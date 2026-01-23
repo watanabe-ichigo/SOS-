@@ -120,8 +120,9 @@ public class FriendViewModel extends ViewModel {
         String myUid = user.getUid();
 
         // Repositoryの監視メソッドを呼び出す
-        friendListener = repository.observeFriendList(myUid, updatedList -> {
+        friendListener = repository.observeFriendListWithDetails(myUid, updatedList -> {
 
+            if (updatedList == null) return;
             // 【重要】追加判定ロジック
             // 初回（previousListSizeが-1）は無視し、2回目以降の更新でサイズが増えていたら「追加」
             if (previousListSize != -1 && updatedList.size() > previousListSize) {
@@ -159,4 +160,8 @@ public class FriendViewModel extends ViewModel {
             friendListener = null;
         }
     }
+
+    //ViewModelクラスに追記(※アクティビティに作成した合体リストを渡す)
+
+
 }

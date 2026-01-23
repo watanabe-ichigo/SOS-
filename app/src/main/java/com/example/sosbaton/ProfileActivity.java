@@ -117,7 +117,23 @@ public class ProfileActivity extends AppCompatActivity {
                 android.content.ClipData clip = android.content.ClipData.newPlainText("UserID", idToCopy);
                 clipboard.setPrimaryClip(clip);
 
-                Toast.makeText(this, "ユーザーIDをコピーしました", Toast.LENGTH_SHORT).show();
+                com.google.android.material.snackbar.Snackbar snackbar =
+                        com.google.android.material.snackbar.Snackbar.make(v, "IDをコピーしました", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT);
+
+                // 2. Viewを取得
+                View snackbarView = snackbar.getView();
+
+                // 3. レイアウトパラメータを FrameLayout.LayoutParams として取得し、位置を上に設定
+                // ※Snackbarの内部構造を利用したハック的な方法です
+                android.view.ViewGroup.LayoutParams lp = snackbarView.getLayoutParams();
+                if (lp instanceof android.widget.FrameLayout.LayoutParams) {
+                    android.widget.FrameLayout.LayoutParams params = (android.widget.FrameLayout.LayoutParams) lp;
+                    params.gravity = android.view.Gravity.TOP; // ここで上部を指定
+                    params.topMargin = 150;                   // 上からのマージン
+                    snackbarView.setLayoutParams(params);
+                }
+
+                snackbar.show();
             });
         }
 

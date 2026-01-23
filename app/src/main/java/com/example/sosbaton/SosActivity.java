@@ -7,6 +7,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.util.Log;
 import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.ImageButton;
 import android.widget.Button;
 import android.content.Intent;
@@ -27,7 +29,9 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.firebase.Timestamp;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.WriteBatch;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -57,6 +61,18 @@ public class SosActivity extends AppCompatActivity {
 
         Button EmergencyButton = findViewById(R.id.EmergencyButton);
         EmergencyButton.setOnClickListener(v -> showConfirmDialogFor110());
+
+        Button DisasterButton = findViewById(R.id.DisasterButton);
+        DisasterButton.setOnClickListener(v -> showConfirmDialogFor171());
+
+        Button btnHowToUse = findViewById(R.id.btnHowToUse);
+
+
+        btnHowToUse.setOnClickListener(v -> showDialog());
+
+
+
+
     }
 
     // 119 → 確認ダイアログ
@@ -93,6 +109,45 @@ public class SosActivity extends AppCompatActivity {
                     startDial110();
                 })
                 .show();
+    }
+
+
+    private void showConfirmDialogFor171() {
+        new AlertDialog.Builder(this)
+                .setTitle("確認")
+                .setMessage("第三者に位置情報を共有しますか？")
+                .setPositiveButton("OK", (dialog, which) -> {
+                    startDial110();
+
+
+                    sendLocationToPinsCollection(3); // type = 3 → sos
+                })
+                .setNegativeButton("キャンセル", (dialog, which) -> {
+                    // キャンセルでも電話
+                    startDial171();
+                })
+                .show();
+    }
+
+
+    private void showDialog() {
+        LayoutInflater inflater = LayoutInflater.from(this);
+        View view = inflater.inflate(R.layout.dialog_how_to_use, null);
+
+// ダイアログを作成
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setView(view)
+                .create(); // showの前に一度createする
+
+// 自作XML内のボタンを取得して、クリックで閉じるようにする
+        Button btnClose = view.findViewById(R.id.btn_close_dialog);
+        btnClose.setOnClickListener(v -> {
+            // ここに閉じるときの処理を書く
+            dialog.dismiss();
+        });
+
+        dialog.show();
+
     }
 
     private void sendLocationToPinsCollection(
@@ -163,6 +218,13 @@ public class SosActivity extends AppCompatActivity {
     private void startDial110() {
         Intent intent = new Intent(Intent.ACTION_DIAL);
         intent.setData(Uri.parse("tel:110"));
+        startActivity(intent);
+    }
+
+    // 171 に電話
+    private void startDial171() {
+        Intent intent = new Intent(Intent.ACTION_DIAL);
+        intent.setData(Uri.parse("tel:171"));
         startActivity(intent);
     }
 

@@ -67,6 +67,7 @@ public class BoardRepository {
             // ユーザー情報の更新
             Map<String, Object> userState = new HashMap<>();
             userState.put("currentBoardId", newPinDocId);
+            userState.put("evacuationTime",Timestamp.now());
             batch.set(userStateRef, userState, SetOptions.merge());
 
             // コミット
