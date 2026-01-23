@@ -138,5 +138,20 @@ public class FriendRepository {
     }
 
 
+    // 結果を流し続けるメソッド（フレンドリストの監視）
+    // 戻り値を ListenerRegistration に変更するだけ！
+    public com.google.firebase.firestore.ListenerRegistration observeFriendList(String myUid, Consumer<List<FriendModel>> onUpdate) {
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+
+        return db.collection("users").document(myUid).collection("friend_list")
+                .addSnapshotListener((snapshots, e) -> {
+                    if (e != null || snapshots == null) return;
+
+                    List<FriendModel> updatedList = snapshots.toObjects(FriendModel.class);
+                    onUpdate.accept(updatedList);
+                });
+    }
+
+
 
 }
