@@ -109,4 +109,7 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
     implementation("com.google.android.gms:play-services-maps:18.2.0")
+
+    //FCMファイアストア通知システム
+    implementation("com.google.firebase:firebase-messaging:24.0.0")
 }

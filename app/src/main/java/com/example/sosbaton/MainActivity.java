@@ -470,6 +470,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (currentUser != null) {
             // ログイン状態が維持されている
 
+            saveFcmTokenToFirestore();
+
             myuid = user.getUid();
 
             // 現在のユーザー名（displayName）をチェックする
@@ -2275,6 +2277,31 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             }
         }
+    }
+
+
+    private void saveFcmTokenToFirestore() {
+        String myUid = com.google.firebase.auth.FirebaseAuth.getInstance().getUid();
+        if (myUid == null) return;
+
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(task -> {
+                    if (!task.isSuccessful()) {
+                        android.util.Log.w("FCM", "トークンの取得に失敗しました", task.getException());
+                        return;
+                    }
+
+                    // このデバイス固有の住所（トークン）
+                    String token = task.getResult();
+
+                    // Firestoreのユーザー情報に「fcmToken」として保存
+                    com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                            .collection("users")
+                            .document(myUid)
+                            .update("fcmToken", token)
+                            .addOnSuccessListener(aVoid -> android.util.Log.d("FCM", "トークン保存成功！"))
+                            .addOnFailureListener(e -> android.util.Log.e("FCM", "トークン保存失敗", e));
+                });
     }
 
 }
