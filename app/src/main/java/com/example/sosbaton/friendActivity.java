@@ -19,7 +19,7 @@ import android.widget.TextView;
 
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.WriteBatch;
-
+import android.widget.ImageView;
 
 public class friendActivity extends AppCompatActivity {
 
@@ -107,6 +107,8 @@ public class friendActivity extends AppCompatActivity {
                     //useridのテキストボックス
                     TextView tx_id = dialogView.findViewById(R.id.tvUserId);
 
+                    ImageView iv_icon = dialogView.findViewById(R.id.imgIcon);
+
                     // 取得した情報をテキストボックスにセット
                     if (tx_name != null) {
                         tx_name.setText("名前：" + foundUser.getUserName());
@@ -115,6 +117,18 @@ public class friendActivity extends AppCompatActivity {
                     if (tx_id != null) {
                         // 「固定テキスト」 + 「取得した値」
                         tx_id.setText("ID：" + foundUser.getUserId());
+                    }
+
+                    if (iv_icon != null) {
+                        String iconUrl = foundUser.getIconUrl(); // FriendModelにiconUrlがある前提よ！
+                        if (iconUrl != null && !iconUrl.isEmpty()) {
+                            com.bumptech.glide.Glide.with(this)
+                                    .load(iconUrl)
+                                    .circleCrop()
+                                    .into(iv_icon);
+                        } else {
+                            iv_icon.setImageResource(R.drawable.initial_icon_user_);
+                        }
                     }
 
 

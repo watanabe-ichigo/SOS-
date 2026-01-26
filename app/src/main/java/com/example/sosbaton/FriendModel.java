@@ -9,6 +9,9 @@ public class FriendModel {
     //検索結果表示用のusername
     private String username;
 
+    //URLを保存する場所
+    private String iconUrl;
+
     //現状の避難場所id
     private String currentBoardId;
 
@@ -17,6 +20,10 @@ public class FriendModel {
 
     // Firestoreのために空のコンストラクタが必要
     public FriendModel() {}
+
+    public String getIconUrl() {
+        return iconUrl;
+    }
 
     //userIdを渡していく
     public String getUserId() {

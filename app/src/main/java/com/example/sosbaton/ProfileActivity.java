@@ -160,7 +160,7 @@ public class ProfileActivity extends AppCompatActivity {
                         if (iconUrl != null && !iconUrl.isEmpty()) {
                             // Glideなどのライブラリを使って画像をロードするのだ
                             // (Glideを使用している場合の例なのだ)
-                            Glide.with(this).load(iconUrl).into(imageUserIcon);
+                            Glide.with(this).load(iconUrl).circleCrop().into(imageUserIcon);
                         } else {
                             // URLがない場合はデフォルトアイコンに戻すのだ
                             imageUserIcon.setImageResource(R.drawable.initial_icon_user_);

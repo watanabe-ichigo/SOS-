@@ -124,6 +124,7 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
         TextView tvUsername, tvUserId, tvCurrentBoard, tvAddedAt;
         ImageButton btnDelete, btnEye, btnCopy;
 
+
         public FriendViewHolder(@NonNull View itemView) {
             super(itemView);
             tvUsername = itemView.findViewById(R.id.tvUsername);
