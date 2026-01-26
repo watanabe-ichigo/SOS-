@@ -30,7 +30,10 @@ import com.google.firebase.storage.FirebaseStorage; // storage = FirebaseStorage
 import com.google.firebase.storage.StorageReference; // fileRef の型定義のため
 import com.google.firebase.firestore.FieldValue; // FieldValue.delete() のため
 import com.bumptech.glide.Glide; // Glide.with(this).load(url).into(imageUserIcon); のため
-
+import com.canhub.cropper.CropImageContract;
+import com.canhub.cropper.CropImageContractOptions;
+import com.canhub.cropper.CropImageOptions;
+import com.canhub.cropper.CropImageView;
 
 
 
@@ -44,7 +47,15 @@ public class ProfileActivity extends AppCompatActivity {
 
     private FirebaseStorage storage;
     private ImageView imageUserIcon;
-    private ActivityResultLauncher<String> imagePickerLauncher;
+    private final ActivityResultLauncher<CropImageContractOptions> cropImageLauncher =
+            registerForActivityResult(new CropImageContract(), result -> {
+                if (result.isSuccessful()) {
+                    Uri resultUri = result.getUriContent();
+                    if (resultUri != null) {
+                        uploadImageToStorage(resultUri);
+                    }
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,7 +89,6 @@ public class ProfileActivity extends AppCompatActivity {
 
         imageUserIcon = findViewById(R.id.imageUserIcon);
         imageUserIcon.setOnClickListener(v -> showIconOptionsDialog());
-        setupImagePickerLauncher();
 
         // ユーザー情報読み込み
         loadUserInfo();
@@ -349,9 +359,26 @@ public class ProfileActivity extends AppCompatActivity {
     // ❺ ギャラリーから画像を選択 (修正後)
     // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
     private void selectImage() {
-        // startAcitivityForResultは使わないのだ！
-        // image/* のMIMEタイプでギャラリーを開くのだ
-        imagePickerLauncher.launch("image/*");
+        // ライブラリの設定を作るのだ
+        CropImageOptions cropOptions = new CropImageOptions();
+        cropOptions.guidelines = CropImageView.Guidelines.ON; // ガイドラインを表示
+        cropOptions.cropShape = CropImageView.CropShape.OVAL; // 丸型のガイド
+        cropOptions.fixAspectRatio = true; // 正方形に固定
+        cropOptions.aspectRatioX = 1;
+        cropOptions.aspectRatioY = 1;
+
+        // ボタンや背景の色をハッキリさせる設定なのだ（これで見えるようになるはず！）
+        cropOptions.activityMenuIconColor = android.graphics.Color.WHITE; // 決定ボタン（✓）を白に
+        cropOptions.toolbarColor = android.graphics.Color.BLACK;          // バーを黒に
+        cropOptions.activityTitle = "トリミング";                // タイトルも一応つけておくわ
+        // ------------------------------
+
+        // 【重要】アクションバーがないテーマでも、強制的にツールバーを表示させるのだ！
+        cropOptions.showProgressBar = true; // ついでにプログレスバーも出すわ
+        // ------------------------------
+
+        // さっき定義した cropImageLauncher を使うのだ！
+        cropImageLauncher.launch(new CropImageContractOptions(null, cropOptions));
     }
 
     // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
@@ -394,7 +421,7 @@ public class ProfileActivity extends AppCompatActivity {
                 .addOnSuccessListener(aVoid -> {
                     // 成功したらImageViewを更新するのだ
                     // Glideなどのライブラリを使用
-                    Glide.with(this).load(url).into(imageUserIcon);
+                    Glide.with(this).load(url).circleCrop().into(imageUserIcon);
                     Toast.makeText(this, "アイコンを更新しました", Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e ->
@@ -441,23 +468,7 @@ public class ProfileActivity extends AppCompatActivity {
                     });
         });
     }
-    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
-    // 10. 画像選択ランチャーの初期化
-    // ＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝＝
-    private void setupImagePickerLauncher() {
-        imagePickerLauncher = registerForActivityResult(
-                new ActivityResultContracts.GetContent(),
-                (Uri imageUri) -> {
-                    // ここが onActivityResult の代わりになるのだ
-                    if (imageUri != null) {
-                        uploadImageToStorage(imageUri);
-                    } else {
-                        // 画像が選択されなかった場合の処理
-                        Toast.makeText(this, "画像選択をキャンセルしたのだ", Toast.LENGTH_SHORT).show();
-                    }
-                }
-        );
-    }
+
 
     //共有メソッド
     private void shareText(Context context, String text) {

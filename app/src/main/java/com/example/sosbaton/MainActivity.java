@@ -77,7 +77,8 @@ import com.google.firebase.firestore.DocumentSnapshot; // これも必要です
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-
+import com.bumptech.glide.Glide;
+import android.widget.ImageView;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
@@ -592,9 +593,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             Toast.makeText(this, welcomeMessage, Toast.LENGTH_LONG).show();
 
                             // 🔹 アイコン表示したい場合
-                            // ImageView ivUserIcon = headerView.findViewById(R.id.ivUserIcon);
-                            // String iconUrl = document.getString("iconUrl");
-                            // Glide.with(this).load(iconUrl).into(ivUserIcon);
+                            ImageView ivUserIcon = headerView.findViewById(R.id.imageView2); // IDが合ってるか確認しなさいよね！
+                            String iconUrl = document.getString("iconUrl");
+
+                            if (ivUserIcon != null) {
+                                if (iconUrl != null && !iconUrl.isEmpty()) {
+                                    // Glideで円形に切り抜いて表示するのだ！
+                                    Glide.with(this)
+                                            .load(iconUrl)
+                                            .circleCrop()
+                                            .into(ivUserIcon);
+                                } else {
+                                    // アイコンがない時はデフォルト画像を表示しなさい！
+                                    ivUserIcon.setImageResource(R.drawable.initial_icon_user_);
+                                }
+                            }
 
                         } else {
                             Log.d(TAG, "Firestore にドキュメントが存在しません");

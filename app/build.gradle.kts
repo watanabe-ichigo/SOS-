@@ -67,49 +67,40 @@ android {
 }
 
 dependencies {
-    // 💥 Firebase BoM（バージョン管理の土台。最新版を使うのだ！）
-    // 34.5.0が2回あったのを1つにまとめたのだ
+    // 💥 Firebase BoM
     implementation(platform("com.google.firebase:firebase-bom:34.5.0"))
 
-    // 🔽 Firebase 必須ライブラリ（BoMでバージョン指定を省略できるのだ）
+    // 🔽 Firebase 必須ライブラリ
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
-
-    // 🔥 Firebase Storage（バージョンが重複していたので、BoMに頼るためにバージョン指定を削除するのだ！）
-    // implementation("com.google.firebase:firebase-storage:20.3.0") と
-    // implementation 'com.google.firebase:firebase-storage:20.1.0' は両方削除なのだ
     implementation("com.google.firebase:firebase-storage")
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-analytics")
 
-    // 🔥 Glide（アイコン画像表示のため）
+    // ✨ アイコンを拡大縮小・切り抜きするライブラリ（これを追加したわよ！）
+    implementation("com.github.CanHub:Android-Image-Cropper:4.5.0")
+
+    // 🔥 Glide（画像表示）
     implementation("com.github.bumptech.glide:glide:4.16.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.16.0")
 
-    // 🔽 Google Services（Play Services, Maps, Location）
+    // 🔽 Google Services
     implementation("com.google.android.gms:play-services-maps:19.0.0")
     implementation("com.google.android.gms:play-services-location:21.0.1")
-    implementation("com.google.maps.android:android-maps-utils:2.3.0") // マップユーティリティ
+    implementation("com.google.maps.android:android-maps-utils:2.3.0")
 
-    // 🔽 その他
+    // 🔽 ネットワーク・JSON
     implementation("com.squareup.okhttp3:okhttp:4.9.3")
     implementation("org.json:json:20210307")
 
-    // 🔽 標準的なAndroidライブラリ
+    // 🔽 標準ライブラリ
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
-    // constraintlayoutが2回あったので1つ削除
-    // implementation("androidx.constraintlayout:constraintlayout:2.1.4") // これを削除
-
-    // 任意：Analytics（使わないならコメントアウトでOK）
-    implementation("com.google.firebase:firebase-analytics")
 
     // 🔽 テスト
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-    implementation("com.google.android.gms:play-services-maps:18.2.0")
-
-    //FCMファイアストア通知システム
-    implementation("com.google.firebase:firebase-messaging:24.0.0")
 }
