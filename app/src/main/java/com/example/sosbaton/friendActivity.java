@@ -30,6 +30,14 @@ public class friendActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.dialog_friend);
 
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            // ステータスバーのアイコンを暗い色（黒など）に設定する
+            View decorView = getWindow().getDecorView();
+            int flags = decorView.getSystemUiVisibility();
+            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            decorView.setSystemUiVisibility(flags);
+        }
+
         // 親のルートレイアウトを取得するわよ！
         View rootLayout = findViewById(R.id.root_layout);
         if (rootLayout != null) {

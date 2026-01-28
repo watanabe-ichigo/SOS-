@@ -18,6 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.util.Log;
+import android.view.View;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 
 public class FriendmsgActivity extends AppCompatActivity {
@@ -39,6 +42,36 @@ public class FriendmsgActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.dialog_massage);
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            // ステータスバーのアイコンを暗い色（黒など）に設定する
+            View decorView = getWindow().getDecorView();
+            int flags = decorView.getSystemUiVisibility();
+            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            decorView.setSystemUiVisibility(flags);
+        }
+
+        View rootLayout = findViewById(R.id.root_layout);
+        if (rootLayout != null) {
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(rootLayout, (v, insets) -> {
+                androidx.core.graphics.Insets systemBars = insets.getInsets(
+                        androidx.core.view.WindowInsetsCompat.Type.systemBars()
+                );
+
+                // XMLの android:padding="16dp" を考慮するわよ
+                float density = getResources().getDisplayMetrics().density;
+                int basePaddingPx = (int) (16 * density);
+
+                v.setPadding(
+                        systemBars.left + basePaddingPx,
+                        systemBars.top + basePaddingPx,
+                        systemBars.right + basePaddingPx,
+                        systemBars.bottom + basePaddingPx
+                );
+
+                return insets;
+            });
+        }
 
         // UI取得
         btnClose = findViewById(R.id.btnClose);
