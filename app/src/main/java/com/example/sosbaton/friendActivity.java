@@ -30,6 +30,30 @@ public class friendActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.dialog_friend);
 
+        // 親のルートレイアウトを取得するわよ！
+        View rootLayout = findViewById(R.id.root_layout);
+        if (rootLayout != null) {
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(rootLayout, (v, insets) -> {
+                androidx.core.graphics.Insets systemBars = insets.getInsets(
+                        androidx.core.view.WindowInsetsCompat.Type.systemBars()
+                );
+
+                // XMLで設定した元のpadding (16dp) を取得して加算するのだ
+                float density = getResources().getDisplayMetrics().density;
+                int basePaddingPx = (int) (16 * density);
+
+                // 四方のセーフゾーンを考慮してパディングを設定するわよ
+                v.setPadding(
+                        systemBars.left + basePaddingPx,
+                        systemBars.top + basePaddingPx,
+                        systemBars.right + basePaddingPx,
+                        systemBars.bottom + basePaddingPx
+                );
+
+                return insets;
+            });
+        }
+
         // ViewModelのインスタンス
         FriendViewModel friendViewModel = new ViewModelProvider(this).get(FriendViewModel.class);
         //
