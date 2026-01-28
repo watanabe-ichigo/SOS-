@@ -20,6 +20,7 @@ android {
 
 
     namespace = "com.example.sosbaton"
+//    com.example.sosbaton
     /*compileSdk {
         version = release(34)
     }*/
