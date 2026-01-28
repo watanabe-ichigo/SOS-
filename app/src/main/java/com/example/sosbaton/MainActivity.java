@@ -999,7 +999,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         request.setInterval(1000);
                         fusedLocationClient.requestLocationUpdates(request, locationCallback, getMainLooper());
                         current = new LatLng(location.getLatitude(), location.getLongitude());
-                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current, 18));
+                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current, 15));
                         Log.d(TAG, "現在地取得成功: " + location.getLatitude() + ", " + location.getLongitude());
                     } else {
                         Log.d(TAG, "現在地が取得できませんでした");
@@ -1022,7 +1022,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
             new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
                     .setTitle("ここで何をする？")
-                    .setItems(new CharSequence[]{"赤ピン", "緑ピン", "ここへ行く", "キャンセル"},
+                    .setItems(new CharSequence[]{"赤ピン'(危険)", "緑ピン(安全)", "ここへ行く", "キャンセル"},
                             (dialog, which) -> {
                                 switch (which) {
                                     case 0:
