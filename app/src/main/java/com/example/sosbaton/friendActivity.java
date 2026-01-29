@@ -25,6 +25,7 @@ public class friendActivity extends AppCompatActivity {
 
     private FriendListAdapter adapter; // ★追加：アダプターの宣言
 
+
     protected void onCreate(Bundle savedInstanceState) {
         //layout読み込み
         super.onCreate(savedInstanceState);
@@ -72,6 +73,7 @@ public class friendActivity extends AppCompatActivity {
         //閉じる
         ImageButton close =findViewById(R.id.btnClose);
         close.setOnClickListener(v -> {
+
             finish();
         });
 

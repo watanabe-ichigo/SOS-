@@ -127,10 +127,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     //選択ピン保存用
     // 現在選択中の避難所ピン(docID)
     private String selectedshelterPinDocId = null;
+
     //現在選択中の避難所ピン(name)
     private String selectedshelterPinname = null;
     //現在選択中の避難所ピン(座標)
     LatLng selectedshelterPinlatlng = null;
+
+    //現在選択中のsosピン
+    private  String selectedSosPinDocId =null;
 
 
     private boolean listenerRegistered = false;
@@ -276,25 +280,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         drawRouteShortest(target);
 
 
-//                        // カメラ移動
-//                        LatLngBounds bounds = new LatLngBounds.Builder()
-//                                .include(current)
-//                                .include(selectedMarker.getPosition())
-//                                .build();
-//
-//                        googleMap.animateCamera(
-//                                CameraUpdateFactory.newLatLngBounds(bounds, 200)
-//                        );
 
                         googleMap.animateCamera(
                                 CameraUpdateFactory.newLatLngZoom(current, 18f)
                         );
-                        // 例: 最短ルート
-                        /*drawRouteShortest(new LatLng(37.39830881, 140.35796203));
-                        drawRouteShortest(new LatLng(37.376782, 140.392777));     // 東部体育館
-                        drawRouteShortest(new LatLng(37.36942367, 140.37393403)); // ビッグパレット
-                        drawRouteShortest(new LatLng(37.419631, 140.390504));
-                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,20));// 富久山公民館*/
+
                     })
                     .setNegativeButton("ルートリセット", (dialog, which) -> {
                         clearAllPolylines();
@@ -385,7 +375,26 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Button back = findViewById(R.id.btnback);
         Button btncurrent = findViewById(R.id.btncurrent);
         Button btnchat = findViewById(R.id.btnchat);
+        Button btnok = findViewById(R.id.btnok);
 
+        //解決ボタン
+        btnok.setOnClickListener(v -> {
+
+            new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                    .setTitle("sos解決")
+                    .setMessage("sosは解決しましたか？(ピン削除)")
+                    .setPositiveButton("解決", (dialog, which) -> {
+
+                        sos_deletePin(selectedMarker, selectedSosPinDocId);
+                        if (overlay != null) {
+                            overlay.remove();
+                        }
+
+                    })
+                    .setNegativeButton("キャンセル", (dialog, which) -> dialog.dismiss())
+                    .show();
+
+        });
         //閉じる
         Close.setOnClickListener(v -> {
             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
@@ -424,8 +433,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 //ボトムシートが展開中であれば隠す
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
 
-                showCustomSnackbar(v, "現在地を再取得しています。しばらくお待ちください" +
-                        "※一度だけ押してお待ちください");
+                showCustomSnackbar(v, "現在地を再取得しています。しばらくお待ちください");
 
                 // 作成した「再接続メソッド」を呼び出す
                 relinkLocation();
@@ -1108,8 +1116,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtName.setText("場所:　" + s.name);
                 txtAddress.setText("住所:　" + s.address);
                 txtType.setText(s.type);
-                //カメラズーム
-                //googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(position,15));
                 //ボトムシート展開
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 //表示要素
@@ -1118,7 +1124,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtType.setVisibility(View.VISIBLE);
                 //非表示要素
                 Button btndelete = findViewById(R.id.btndelete);
+                Button btnok = findViewById(R.id.btnok);
                 btndelete.setVisibility(View.GONE);
+                btnok.setVisibility(View.GONE);
                 txttime.setVisibility(View.GONE);
                 txturgency.setVisibility(View.GONE);
                 txtsosCategory.setVisibility(View.GONE);
@@ -1147,6 +1155,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtType.setVisibility(View.VISIBLE);
                 //非表示要素
                 Button btnchat = findViewById(R.id.btnchat);
+                Button btnok = findViewById(R.id.btnok);
+                btnok.setVisibility(View.GONE);
                 btnchat.setVisibility(View.GONE);
                 txttime.setVisibility(View.GONE);
                 txturgency.setVisibility(View.GONE);
@@ -1155,6 +1165,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             } else if (tag instanceof Sospin) {//sosピン
                 Sospin sos = (Sospin) tag;
+                selectedSosPinDocId = sos.docId;
                 //テキスト変更箇所
                 updateTimeAgo(sos.createdAt, txttime);
                 txtName.setText("投稿者:　" + sos.Uname);
@@ -1182,6 +1193,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 //ボトムシート展開
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 //表示要素
+                Button btnok = findViewById(R.id.btnok);
+                if(myuid != null && myuid.equals(sos.uid)){
+                    btnok.setVisibility(View.VISIBLE);
+                }else{
+                    btnok.setVisibility(View.GONE);
+                }
                 txturgency.setVisibility(View.VISIBLE);
                 txtsosCategory.setVisibility(View.VISIBLE);
                 txtsupporttype.setVisibility(View.VISIBLE);
@@ -1953,6 +1970,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         marker.remove();  // マップから削除
         bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
     }
+    //sosピン削除用
+    private void sos_deletePin(Marker marker, String docId) {
+
+        db.collection("sospin").document(docId)
+                .delete()
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "ピン削除成功: " + docId))
+                .addOnFailureListener(e -> Log.w(TAG, "ピン削除失敗", e));
+        marker.remove();  // マップから削除
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+    }
+
     //④ボトムシートの初期化処理
 
     //ボトムシートの開閉やスライド制御のインスタンス
@@ -2148,7 +2176,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //ファイヤベースのsosピン情報を取得
     //避難所ピン情報をファイヤベースから取得
-    private void loadSospin() {
+    public void loadSospin() {
         db.collection("sospin").get().addOnSuccessListener(query -> {
             for (DocumentSnapshot doc : query) {
                 String docId = doc.getId();
