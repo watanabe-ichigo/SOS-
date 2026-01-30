@@ -17,6 +17,7 @@ public class FriendModel {
 
     //避難時間
     private String evacuatedAt;
+    //sos状態のフラグ
 
     // Firestoreのために空のコンストラクタが必要
     public FriendModel() {}
