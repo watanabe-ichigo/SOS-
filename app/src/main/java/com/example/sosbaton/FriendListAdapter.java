@@ -9,6 +9,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
+import com.bumptech.glide.Glide;
+import android.widget.ImageView;
 
 public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.FriendViewHolder> {
 
@@ -46,6 +48,20 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
         // --- IDのセット（nullなら「---」） ---
         String id = (friend.getUserId() != null) ? friend.getUserId() : "---";
         holder.tvUserId.setText("ID: " + id);
+
+        String iconUrl = friend.getIconUrl();
+        if (iconUrl != null && !iconUrl.isEmpty()) {
+            // アイコンが登録されている場合
+            Glide.with(holder.itemView.getContext())
+                    .load(iconUrl)
+                    .circleCrop() // ProfileActivityに合わせて丸く切り抜くのだ
+                    .placeholder(R.drawable.initial_icon_user_) // 読み込み中の仮画像
+                    .error(R.drawable.initial_icon_user_)       // エラー時の画像
+                    .into(holder.imageUserIcon);
+        } else {
+            // アイコン未登録の場合はデフォルト画像を表示するのだ
+            holder.imageUserIcon.setImageResource(R.drawable.initial_icon_user_);
+        }
 
         // --- 未実装情報のガード（データがない場合は非表示にする） ---
         // ※FriendModelにメソッドがない場合は、とりあえず仮でチェック
@@ -123,6 +139,7 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
     static class FriendViewHolder extends RecyclerView.ViewHolder {
         TextView tvUsername, tvUserId, tvCurrentBoard, tvAddedAt;
         ImageButton btnDelete, btnEye, btnCopy;
+        ImageView imageUserIcon;
 
 
         public FriendViewHolder(@NonNull View itemView) {
@@ -133,6 +150,7 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
             tvAddedAt = itemView.findViewById(R.id.tvAddedAt);
             btnDelete = itemView.findViewById(R.id.btnDelete);
             btnCopy = itemView.findViewById(R.id.btnCopy);
+            imageUserIcon = itemView.findViewById(R.id.imageUserIcon);
         }
     }
 }

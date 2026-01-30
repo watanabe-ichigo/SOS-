@@ -25,6 +25,9 @@ public class FriendModel {
         return iconUrl;
     }
 
+    public void setIconUrl(String iconUrl) {
+        this.iconUrl = iconUrl;
+    }
     //userIdを渡していく
     public String getUserId() {
         return userId;
