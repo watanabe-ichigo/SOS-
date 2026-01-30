@@ -67,6 +67,9 @@ public class friendActivity extends AppCompatActivity {
         FriendViewModel friendViewModel = new ViewModelProvider(this).get(FriendViewModel.class);
         //
 
+        if (MainActivity.getInstance() != null) {
+            MainActivity.getInstance().loadSospin();
+        }
 
 
 

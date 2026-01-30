@@ -88,7 +88,12 @@ import android.app.NotificationChannel;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
+    // 自分のインスタンスを保持する変数
+    private static MainActivity instance;
 
+    public static MainActivity getInstance() {
+        return instance;
+    }
     private String userName = "ゲスト";
     private DrawerLayout drawerLayout;
     private Toolbar toolbar;
@@ -217,6 +222,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         // その後、順番に権限を求めていく
         startPermissionFlow();
+
+        //このクラスのメソッドをフレンドクラスで呼び出す用
+        instance = this;
 
 
 
