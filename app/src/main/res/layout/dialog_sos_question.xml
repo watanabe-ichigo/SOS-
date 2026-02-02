@@ -17,7 +17,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:text="ピンの状態は？"
+            android:text="状態は？"
             android:textColor="#f66b6b"
             android:textStyle="bold" />
 
@@ -34,19 +34,25 @@
                 android:id="@+id/q1_1"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:text="未対応" />
+                android:text="出血あり" />
 
             <RadioButton
                 android:id="@+id/q1_2"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:text="対応中" />
+                android:text="意識なし" />
 
             <RadioButton
                 android:id="@+id/q1_3"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:text="対応済み" />
+                android:text="動けない" />
+
+            <RadioButton
+                android:id="@+id/q1_4"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="問題なく動ける" />
         </RadioGroup>
 
         <!-- 質問2 -->
@@ -114,9 +120,77 @@
                 android:layout_height="match_parent"
                 android:text="いらない" />/>
 
+
+
         </RadioGroup>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="あなたは？"
+            android:textColor="#f66b6b"
+            android:textStyle="bold" />/>
+
+        <RadioGroup
+            android:id="@+id/radioGroup4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <RadioButton
+                android:id="@+id/q4_1"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="当事者" />/>
+
+            <RadioButton
+                android:id="@+id/q4_2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="第三者" />/>
+
+            <RadioButton
+                android:id="@+id/q4_3"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="加害者" />/>
+
+    </RadioGroup>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="AEDは？"
+        android:textColor="#f66b6b"
+        android:textStyle="bold" />/>
+
+    <RadioGroup
+        android:id="@+id/radioGroup5"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <RadioButton
+            android:id="@+id/q5_1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="いる" />/>
+
+        <RadioButton
+            android:id="@+id/q5_2"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="いらない" />/>
+
+
+    </RadioGroup>
 
     </LinearLayout>
+
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

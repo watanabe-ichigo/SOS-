@@ -15,6 +15,17 @@ import android.widget.ImageView;
 
 public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.FriendViewHolder> {
 
+    //  インターフェースを定義(クリックイベントの追加のため)
+    public interface OnFriendClickListener {
+        void onFriendClick(double lat, double lng,String userId);
+    }
+
+    private OnFriendClickListener mListener;
+
+    public void setOnFriendClickListener(OnFriendClickListener listener) {
+        this.mListener = listener;
+    }
+
     //リストに表示する用のフレンドリスト
     private List<FriendModel> friendList = new ArrayList<>();
 
@@ -54,10 +65,21 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
         if (friend.getIsSos()) {
             // SOSがtrueなら、目立つ色に！
             holder.itemView.setBackgroundColor(Color.parseColor("#f66b6b")); // 黄色
+            holder.itemView.setOnClickListener(v -> {
+
+                    if (mListener != null) {
+                        // FriendModelに実装した sos_latitude / sos_longitude を使う！
+                        mListener.onFriendClick(friend.getSos_latitude(), friend.getSos_longitude(),friend.getUserId());
+                    }
+
+            });
         } else {
-            // falseなら、通常の色（透明）に！
+            // falseなら、通常の色（透明）
             holder.itemView.setBackgroundColor(Color.TRANSPARENT);
+            //sosでなければクリックイベント解除
+            holder.itemView.setOnClickListener(null);
         }
+
 
         String iconUrl = friend.getIconUrl();
         if (iconUrl != null && !iconUrl.isEmpty()) {

@@ -14,6 +14,10 @@ public class Sospin  implements Serializable {
     public long sosCategory;
     public long urgency;
     public long supporttype;
+
+    public long q4;
+
+    public long q5;
     public String Uname;
 
     // UI 用フィールド
@@ -24,7 +28,7 @@ public class Sospin  implements Serializable {
     //public Sospin() {} ファイアベース自動追加用"Sospin sos = doc.toObject(Sospin.class);"
 
 
-    public Sospin(long type,double lat, double lng,long createdAt,long sosCategory,long urgency,long supporttype,String Uname,String uid,String docId) {
+    public Sospin(long type,double lat, double lng,long createdAt,long sosCategory,long urgency,long supporttype,String Uname,String uid,String docId,long q4,long q5) {
         this.type = type;
         this.lat = lat;
         this.lng = lng;
@@ -35,6 +39,8 @@ public class Sospin  implements Serializable {
         this.Uname = Uname;
         this.uid = uid;
         this.docId=docId;
+        this.q4 =q4;
+        this.q5 =q5;
     }
 
 

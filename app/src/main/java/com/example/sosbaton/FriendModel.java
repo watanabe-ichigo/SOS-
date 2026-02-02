@@ -20,6 +20,10 @@ public class FriendModel {
     //sos状態のフラグ
     private boolean isSos;
 
+    //sos座標
+    private double sos_latitude;
+    private double sos_longitude;
+
 
 
     // Firestoreのために空のコンストラクタが必要
@@ -55,6 +59,10 @@ public class FriendModel {
         return iconUrl;
     }
 
+    //座標を渡していく
+    public double getSos_latitude() { return sos_latitude; }
+    public double getSos_longitude() { return sos_longitude; }
+
 
 
     // 必要に応じてSetter（値をセットする用）も追加
@@ -77,4 +85,6 @@ public class FriendModel {
     public void setIsSos(boolean isSos) { this.isSos = isSos; }
 
     public void setIconUrl(String iconUrl) {this.iconUrl = iconUrl;}
+    public void setSos_latitude(double lat) { this.sos_latitude = lat; }
+    public void setSos_longitude(double lng) { this.sos_longitude = lng; }
 }

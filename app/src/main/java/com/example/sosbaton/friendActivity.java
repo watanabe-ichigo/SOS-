@@ -17,6 +17,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.widget.Toast;
 import android.widget.TextView;
 
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.model.LatLng;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.WriteBatch;
 import android.widget.ImageView;
@@ -63,6 +65,8 @@ public class friendActivity extends AppCompatActivity {
             });
         }
 
+
+
         // ViewModelのインスタンス
         FriendViewModel friendViewModel = new ViewModelProvider(this).get(FriendViewModel.class);
         //
@@ -83,6 +87,15 @@ public class friendActivity extends AppCompatActivity {
 
         // 2. RecyclerViewの設定（★追加）
         setupRecyclerView();
+
+        adapter.setOnFriendClickListener((lat, lng,userId) -> {
+            android.content.Intent resultIntent = new android.content.Intent();
+            resultIntent.putExtra("zoom_lat", lat);
+            resultIntent.putExtra("zoom_lng", lng);
+            resultIntent.putExtra("zoom_uid", userId);
+            setResult(RESULT_OK, resultIntent); // 結果をセット
+            finish(); // 画面を閉じてMainActivityに戻る
+        });
 
         // 3. フレンドリストの監視設定（★追加）
         // Firestoreからデータが届くたびに、ここが自動で実行されます

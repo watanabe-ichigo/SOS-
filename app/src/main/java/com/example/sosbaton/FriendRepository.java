@@ -161,9 +161,15 @@ public class FriendRepository {
                                         FriendModel friend = new FriendModel();
                                         friend.setUserId(friendId);
                                         friend.setUsername(userProfile.getString("username"));
-                                        // ★ ここに isSos の読み取りを追加！
+                                        //  isSos の読み取り
                                         Boolean isSos = userProfile.getBoolean("isSos");
                                         friend.setIsSos(isSos != null && isSos); // nullチェックしつつセット
+                                        // 座標の読み取り
+                                        Double lat = userProfile.getDouble("sos_latitude");
+                                        Double lng = userProfile.getDouble("sos_longitude");
+                                        friend.setSos_latitude(lat != null ? lat : 0.0);
+                                        friend.setSos_longitude(lng != null ? lng : 0.0);
+                                        //urlの読み取り
                                         String iconUrl = userProfile.getString("iconUrl");
                                         friend.setIconUrl(iconUrl != null ? iconUrl : "");                                        String shelterId = userProfile.getString("currentBoardId");
                                         com.google.firebase.Timestamp ts = userProfile.getTimestamp("evacuationTime");

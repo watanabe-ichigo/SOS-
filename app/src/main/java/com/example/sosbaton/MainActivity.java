@@ -332,6 +332,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             RadioGroup rg1 = view.findViewById(R.id.radioGroup1);
             RadioGroup rg2 = view.findViewById(R.id.radioGroup2);
             RadioGroup rg3 = view.findViewById(R.id.radioGroup3);
+            RadioGroup rg4 = view.findViewById(R.id.radioGroup4);
+            RadioGroup rg5 = view.findViewById(R.id.radioGroup5);
 
             new AlertDialog.Builder(this)
                     .setTitle("救助要請")
@@ -339,7 +341,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .setPositiveButton("確定", (dialog, which) -> {
                         if (rg1.getCheckedRadioButtonId() == -1 ||
                                 rg2.getCheckedRadioButtonId() == -1 ||
-                                rg3.getCheckedRadioButtonId() == -1) {
+                                rg3.getCheckedRadioButtonId() == -1 ||rg4.getCheckedRadioButtonId() == -1||rg5.getCheckedRadioButtonId() == -1) {
 
                             Toast.makeText(this, "すべての質問に回答してください", Toast.LENGTH_SHORT).show();
                             return;
@@ -348,6 +350,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         int q1 = rg1.indexOfChild(view.findViewById(rg1.getCheckedRadioButtonId())) + 1;
                         int q2 = rg2.indexOfChild(view.findViewById(rg2.getCheckedRadioButtonId())) + 1;
                         int q3 = rg3.indexOfChild(view.findViewById(rg3.getCheckedRadioButtonId())) + 1;
+                        int q4 = rg4.indexOfChild(view.findViewById(rg4.getCheckedRadioButtonId())) + 1;
+                        int q5 = rg5.indexOfChild(view.findViewById(rg5.getCheckedRadioButtonId())) + 1;
+
+
 
                         // ここで回答結果をまとめて扱える
                         // 例：Firestoreへ保存、pinType算出など
@@ -361,8 +367,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                                     // ① 完全新規なら削除処理を通さずそのまま保存
                                     if (query.isEmpty()) {
-                                        sosaddPin(current, 3, q1, q2, q3, myuid);
-                                        setUserSosStatus(true);
+                                        sosaddPin(current, 3, q1, q2, q3, myuid,q4,q5);
+                                        updateSosStatusWithLocation(true,current);
                                         return;
                                     }
 
@@ -376,8 +382,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                                     batch.commit()
                                             .addOnSuccessListener(aVoid -> {
-                                                sosaddPin(current, 3, q1, q2, q3, myuid);
-                                                setUserSosStatus(true);
+                                                sosaddPin(current, 3, q1, q2, q3, myuid,q4,q5);
+                                                updateSosStatusWithLocation(true,current);
                                             })
                                             .addOnFailureListener(e -> {
                                                 Toast.makeText(this, "既存ピンの削除に失敗しました", Toast.LENGTH_SHORT).show();
@@ -412,7 +418,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         if (overlay != null) {
                             overlay.remove();
                         }
-                        setUserSosStatus(false);
+                        updateSosStatusWithLocation(false,current);
 
                     })
                     .setNegativeButton("キャンセル", (dialog, which) -> dialog.dismiss())
@@ -711,7 +717,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             } else if (id == R.id.nav_friend) {
 
                 if (myuid != null) {
-                    startActivity(new Intent(MainActivity.this, friendActivity.class));
+
+                    android.content.Intent intent = new android.content.Intent(this, friendActivity.class);
+                    friendLauncher.launch(intent); // これで起動する
                 } else {
                     Toast.makeText(this, "ログインしてください", Toast.LENGTH_SHORT).show();
                 }
@@ -1167,6 +1175,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtName.setVisibility(View.VISIBLE);
                 txtAddress.setVisibility(View.VISIBLE);
                 txtType.setVisibility(View.VISIBLE);
+                Button btnchat = findViewById(R.id.btnchat);
+                btnchat.setVisibility(View.VISIBLE);
                 //非表示要素
                 Button btndelete = findViewById(R.id.btndelete);
                 Button btnok = findViewById(R.id.btnok);
@@ -1176,6 +1186,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txturgency.setVisibility(View.GONE);
                 txtsosCategory.setVisibility(View.GONE);
                 txtsupporttype.setVisibility(View.GONE);
+                q4.setVisibility(View.GONE);
+                q5.setVisibility(View.GONE);
 
 
             } else if (tag instanceof PinInfo) {//赤緑ピン
@@ -1207,6 +1219,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txturgency.setVisibility(View.GONE);
                 txtsosCategory.setVisibility(View.GONE);
                 txtsupporttype.setVisibility(View.GONE);
+                q4.setVisibility(View.GONE);
+                q5.setVisibility(View.GONE);
 
             } else if (tag instanceof Sospin) {//sosピン
                 Sospin sos = (Sospin) tag;
@@ -1215,22 +1229,48 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 updateTimeAgo(sos.createdAt, txttime);
                 txtName.setText("投稿者:　" + sos.Uname);
                 txtsupporttype.setText(
-                        sos.supporttype == 1L ? "対応:　  してほしい" :
-                                sos.supporttype == 2L ? "対応:　  いらない" :
-                                        sos.supporttype == 3L ? "対応:　  第三者協力要請" :
+                        sos.supporttype == 1L ? "通報:　  してほしい" :
+                                sos.supporttype == 2L ? "通報:　  いらない" :
                                                 "不明"
                 );
                 txtsosCategory.setText(
                         sos.sosCategory == 1L ? "状況: 　 体調不良" :
-                                sos.sosCategory == 2L ? "状況: 　 事故" :
-                                        sos.sosCategory == 3L ? "状況: 　 不審者" :
-                                                "不明"
+                                sos.sosCategory == 2L ? "状況: 　 不審者" :
+                                        sos.sosCategory == 3L ? "状況: 　 事故" :
+                                                "状況：不明"
                 );
-                txturgency.setText(
-                        sos.urgency == 1L ? "ピン:　 未対応" :
-                                sos.urgency == 2L ? "ピン:　 対応中" :
-                                        sos.urgency == 3L ? "ピン:　 対応済み" :
-                                                "不明"
+                int urgencyLevel = (int) sos.urgency;
+                String urgencyText;
+
+                switch (urgencyLevel) {
+                    case 1:
+                        urgencyText = "状態:　 出血あり";
+                        break;
+                    case 2:
+                        urgencyText = "状態:　 意識なし";
+                        break;
+                    case 3:
+                        urgencyText = "状態:　 動けない";
+                        break;
+                    case 4:
+                        urgencyText = "状態:　 問題なく動ける"; // 4番目の選択肢を修正
+                        break;
+                    default:
+                        urgencyText = "状態:　 不明";
+                        break;
+                }
+
+                txturgency.setText(urgencyText);
+                q4.setText(
+                        sos.q4 == 1L ? "投稿者:　 当事者" :
+                                sos.q4 == 2L ? "投稿者:　 第三者" :
+                                        sos.q4 == 3L ? "投稿者:　 加害者" :
+                                                        "不明"
+                );
+                q5.setText(
+                        sos.q5 == 1L ? "AED:　 持ってきてほしい" :
+                                sos.q5 == 2L ? "AED:　 いらない" :
+                                                        "不明"
                 );
                 txtTitle.setText("sos情報");
                 //カメラズーム
@@ -1248,8 +1288,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtsosCategory.setVisibility(View.VISIBLE);
                 txtsupporttype.setVisibility(View.VISIBLE);
                 txtName.setVisibility(View.VISIBLE);
+                q4.setVisibility(View.VISIBLE);
+                q5.setVisibility(View.VISIBLE);
                 //非表示要素
                 Button btndelete = findViewById(R.id.btndelete);
+                Button btnchat = findViewById(R.id.btnchat);
+                btnchat.setVisibility(View.GONE);
                 btndelete.setVisibility(View.GONE);
                 txtAddress.setVisibility(View.GONE);
                 txtType.setVisibility(View.GONE);
@@ -2232,7 +2276,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     //ボトムシートの開閉やスライド制御のインスタンス
     BottomSheetBehavior<View> bottomSheetBehavior;
 
-    TextView txtName, txtAddress, txtType, txtTitle, txttime, txtsupporttype, txtsosCategory, txturgency;
+    TextView txtName, txtAddress, txtType, txtTitle, txttime, txtsupporttype, txtsosCategory, txturgency,q4,q5;
 
 
     private void setupBottomSheet() {
@@ -2258,6 +2302,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         txturgency = findViewById(R.id.txturgency);
         txtsosCategory = findViewById(R.id.txtsosCategory);
         txtsupporttype = findViewById(R.id.txtsupporttype);
+        q4 = findViewById(R.id.q4);
+        q5 = findViewById(R.id.q5);
 
         //event権限の分け合うロジック
         nestedScrollView.setOnScrollChangeListener(
@@ -2431,6 +2477,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Long sosCategoryLong = doc.getLong("sosCategory");
                 Long urgencyLong = doc.getLong("urgency");
                 Long supporttypeLong = doc.getLong("supporttype");
+                Long q4Long = doc.getLong("q4");
+                Long q5Long = doc.getLong("q5");
                 Double lat = doc.getDouble("lat");
                 Double lng = doc.getDouble("lng");
                 String name = doc.getString("name");
@@ -2469,6 +2517,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 long sosCategory = sosCategoryLong;
                 long urgency = urgencyLong;
                 long supporttype = supporttypeLong;
+                long q4 = q4Long;
+                long q5 = q5Long;
                 long createdAt = timestamp.toDate().getTime(); // Timestamp → long
 
 
@@ -2487,7 +2537,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         supporttype,
                         name,
                         uid,
-                        docId
+                        docId,
+                        q4,
+                        q5
                 );
                 marker.setTag(sos);
                 sos.marker = marker;
@@ -2500,7 +2552,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     //sosピン追加関数
-    private void sosaddPin(LatLng pos, long type, int q1, int q2, int q3, String uid) {
+    private void sosaddPin(LatLng pos, long type, int q1, int q2, int q3, String uid,int q4,int q5) {
 
         Map<String, Object> pinData = new HashMap<>();
         pinData.put("lat", pos.latitude);
@@ -2513,6 +2565,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         pinData.put("urgency", q1);
         pinData.put("sosCategory", q2);
         pinData.put("supporttype", q3);
+        pinData.put("q4", q4);
+        pinData.put("q5", q5);
         pinData.put("name", userName);
         pinData.put("uid", uid);
 
@@ -2570,12 +2624,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                 pos.latitude,
                                 pos.longitude,
                                 createdAtMillis,
-                                q1,
                                 q2,
+                                q1,
                                 q3,
                                 userName,
                                 uid,
-                                uid
+                                uid,
+                                q4,
+                                q5
 
 
                         );
@@ -2756,14 +2812,41 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     //sosピンのブールレンセット関数
-    private void setUserSosStatus(boolean isSos) {
+    private void updateSosStatusWithLocation(boolean isSos, LatLng pos) {
         if (myuid == null) return;
+
+        // 更新するデータをまとめる
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("isSos", isSos);
+        updates.put("sos_latitude", pos.latitude);
+        updates.put("sos_longitude", pos.longitude);
+
 
         db.collection("users")
                 .document(myuid)
-                .update("isSos", isSos)
-                .addOnSuccessListener(aVoid -> Log.d("SOS_STATUS", "ユーザーのSOS状態を " + isSos + " に更新しました"))
+                .update(updates) // まとめてドン！と更新
+                .addOnSuccessListener(aVoid -> {
+                    Log.d("SOS_STATUS", "SOS状態と位置情報を更新しました: " + isSos);
+                })
                 .addOnFailureListener(e -> Log.e("SOS_STATUS", "更新失敗", e));
     }
+
+    // MainActivity.java の中（クラスの直下）
+    private final androidx.activity.result.ActivityResultLauncher<android.content.Intent> friendLauncher =
+            registerForActivityResult(new androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                            double lat = result.getData().getDoubleExtra("zoom_lat", 0);
+                            double lng = result.getData().getDoubleExtra("zoom_lng", 0);
+                            String targetUid = result.getData().getStringExtra("zoom_uid");
+
+                            if (lat != 0 && lng != 0) {
+                                // ここなら mMap があるので動かせる！
+                                com.google.android.gms.maps.model.LatLng target = new com.google.android.gms.maps.model.LatLng(lat, lng);
+                                googleMap.animateCamera(com.google.android.gms.maps.CameraUpdateFactory.newLatLngZoom(target, 17f));
+
+                            }
+                        }
+                    });
 
 }
