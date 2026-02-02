@@ -349,6 +349,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     // ① 完全新規なら削除処理を通さずそのまま保存
                                     if (query.isEmpty()) {
                                         sosaddPin(current, 3, q1, q2, q3, myuid);
+                                        setUserSosStatus(true);
                                         return;
                                     }
 
@@ -363,6 +364,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     batch.commit()
                                             .addOnSuccessListener(aVoid -> {
                                                 sosaddPin(current, 3, q1, q2, q3, myuid);
+                                                setUserSosStatus(true);
                                             })
                                             .addOnFailureListener(e -> {
                                                 Toast.makeText(this, "既存ピンの削除に失敗しました", Toast.LENGTH_SHORT).show();
@@ -397,6 +399,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         if (overlay != null) {
                             overlay.remove();
                         }
+                        setUserSosStatus(false);
 
                     })
                     .setNegativeButton("キャンセル", (dialog, which) -> dialog.dismiss())
@@ -1020,7 +1023,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             // もしすでに第一陣で位置が取れていたら出す必要はないので判定を入れる
 
                 showCustomSnackbar(findViewById(android.R.id.content),
-                        "現在地を確認中です。動かない場合は現在地ボタンをタップしてください。");
+                        "現在地を確認中です。\n動かない場合は現在地ボタンをタップ");
 
         }, 500);
     }
@@ -2515,6 +2518,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         snackbar.show();
+    }
+
+    //sosピンのブールレンセット関数
+    private void setUserSosStatus(boolean isSos) {
+        if (myuid == null) return;
+
+        db.collection("users")
+                .document(myuid)
+                .update("isSos", isSos)
+                .addOnSuccessListener(aVoid -> Log.d("SOS_STATUS", "ユーザーのSOS状態を " + isSos + " に更新しました"))
+                .addOnFailureListener(e -> Log.e("SOS_STATUS", "更新失敗", e));
     }
 
 }

@@ -1,5 +1,6 @@
 package com.example.sosbaton;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -42,12 +43,21 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
         if (friend == null) return;
 
         // --- ユーザー名のセット（nullなら「不明なユーザー」） ---
-        String name = (friend.getUserName() != null) ? friend.getUserName() : "不明なユーザー";
+        String name = (friend.getUsername() != null) ? friend.getUsername() : "不明なユーザー";
         holder.tvUsername.setText(name);
 
         // --- IDのセット（nullなら「---」） ---
         String id = (friend.getUserId() != null) ? friend.getUserId() : "---";
         holder.tvUserId.setText("ID: " + id);
+
+        // 3. 【ここが判定！】SOSかどうかで見た目を変える
+        if (friend.getIsSos()) {
+            // SOSがtrueなら、目立つ色に！
+            holder.itemView.setBackgroundColor(Color.parseColor("#f66b6b")); // 黄色
+        } else {
+            // falseなら、通常の色（透明）に！
+            holder.itemView.setBackgroundColor(Color.TRANSPARENT);
+        }
 
         String iconUrl = friend.getIconUrl();
         if (iconUrl != null && !iconUrl.isEmpty()) {

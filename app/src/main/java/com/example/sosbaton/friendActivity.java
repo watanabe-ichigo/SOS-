@@ -95,7 +95,7 @@ public class friendActivity extends AppCompatActivity {
         // 4. 新規追加時のトースト通知（★追加）
         friendViewModel.newFriendAddedEvent.observe(this, friend -> {
             if (friend != null) {
-                Toast.makeText(this, friend.getUserName() + "さんとフレンドになりました！", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, friend.getUsername() + "さんとフレンドになりました！", Toast.LENGTH_SHORT).show();
                 friendViewModel.consumeNewFriendEvent(); // 通知済みとしてリセット
             }
         });
@@ -148,7 +148,7 @@ public class friendActivity extends AppCompatActivity {
 
                     // 取得した情報をテキストボックスにセット
                     if (tx_name != null) {
-                        tx_name.setText("名前：" + foundUser.getUserName());
+                        tx_name.setText("名前：" + foundUser.getUsername());
                     }
 
                     if (tx_id != null) {
