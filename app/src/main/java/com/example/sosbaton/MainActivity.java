@@ -78,6 +78,11 @@ import android.animation.ValueAnimator;
 import com.google.firebase.firestore.SetOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.firestore.DocumentSnapshot; // これも必要です
+import com.example.sosbaton.DangerZone;
+import java.util.Collections;
+
+
+
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -178,8 +183,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private LatLng lastCacheCenter = null; // 前回取得した範囲の中心
     private static final float CACHE_REFRESH_THRESHOLD = 1000f; // 200m 未満なら再取得しない
 
+    private static final int MAX_AVOID_ATTEMPTS = 2;
+    private int avoidAttemptCount = 0;
+
     private LatLng lastLatLng = null;
     boolean cameraInitialized = false;
+
+    static final double DANGER_RADIUS = 50; // m
+
+    // ===== メンバ変数 =====
+    List<DangerZone> dangerZones = new ArrayList<>();
 
 
     @Override
@@ -281,12 +294,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         googleMap.animateCamera(
                                 CameraUpdateFactory.newLatLngZoom(current, 18f)
                         );
-                        // 例: 最短ルート
-                        /*drawRouteShortest(new LatLng(37.39830881, 140.35796203));
-                        drawRouteShortest(new LatLng(37.376782, 140.392777));     // 東部体育館
-                        drawRouteShortest(new LatLng(37.36942367, 140.37393403)); // ビッグパレット
-                        drawRouteShortest(new LatLng(37.419631, 140.390504));
-                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current,20));// 富久山公民館*/
                     })
                     .setNegativeButton("ルートリセット", (dialog, which) -> {
                         clearAllPolylines();
@@ -861,7 +868,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
                             // 引数を座標(LatLng)ではなく、Shelter(nearest)に変更
-                            drawRouteAvoiding(shelterdelete);
+                            Shelter nearest = findNearestShelterFromList(shelterdelete);
+                            if (nearest != null) {
+                                LatLng target = new LatLng(nearest.lat, nearest.lng);
+                                startRouteSearch(target);
+                            }
 
 
                         } else {
@@ -875,6 +886,24 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 })
                 .addOnFailureListener(e -> Log.e(TAG, "避難所読み込み失敗", e));
+    }
+    // shelter のリストから「現在地に一番近い1件」を返す
+    private Shelter findNearestShelterFromList(List<Shelter> list) {
+        if (current == null || list == null || list.isEmpty()) return null;
+
+        Shelter nearest = null;
+        float minDistance = Float.MAX_VALUE;
+
+        for (Shelter shelter : list) {
+            LatLng pos = new LatLng(shelter.lat, shelter.lng);
+            float distance = distanceMeters(current, pos);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearest = shelter;
+            }
+        }
+        return nearest;
     }
 
     // 2点間の距離（メートル）を計算する
@@ -1028,7 +1057,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     case 0:
                                         // type=1L (赤ピン)
                                         addPin(latLng, userName, 1);
-
                                         break;
 
                                     case 1:
@@ -1039,7 +1067,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                                     case 2:
                                         clearAllPolylines();
-                                        drawRouteShortest(latLng);
+                                        startRouteSearch(latLng);
                                         break;
 
                                     default:
@@ -1263,6 +1291,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     allMarkers.add(areaMarker);
                     areaMarker.showInfoWindow();
 
+                    if (type == 1) {
+                        // 赤ピン → 危険ゾーンとして登録
+                        dangerZones.add(
+                                new DangerZone(pos, DANGER_RADIUS)
+                        );
+                        Log.d("DangerZone", "危険ゾーン追加: "
+                                + pos.latitude + "," + pos.longitude);
+                    }
+
 
                     if (areaMarker != null) {
                         // type は String でも int でも OK（必要に応じて統一）
@@ -1349,6 +1386,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     .title(type == 1 ? "危険エリア" : type == 2 ? "安全エリア" : "未設定ピン")
                                     .icon(BitmapDescriptorFactory.defaultMarker(color))
                             );
+                            if (type != null && type == 1) {
+                                dangerZones.add(
+                                        new DangerZone(pinPosition, DANGER_RADIUS)
+                                );
+                                Log.d("DangerZone", "Firestore復元 危険ゾーン追加: "
+                                        + lat + "," + lng);
+                            }
 
                             if (marker != null) {
                                 // type は String でも int でも OK（必要に応じて統一）
@@ -1373,22 +1417,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 });
     }
 
-    //    @Override
-//    public void onRequestPermissionsResult ( int requestCode, String[] permissions,
-//                                             int[] grantResults){
-//        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-//        if (requestCode == 1) {
-//            if (grantResults.length > 0
-//                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-//                setCurrentLocationMarker();
-//                startLocationUpdates();
-//                Log.d(TAG, "位置情報権限が許可されました");
-//            } else {
-//                Log.d(TAG, "位置情報権限が拒否されました");
-//            }
-//        }
-//    }
-    //private boolean firstMoveCamera = true; // 初回カメラ移動用
+
     private com.google.android.gms.location.LocationCallback locationCallback =
             new com.google.android.gms.location.LocationCallback() {
                 @Override
@@ -1475,7 +1504,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .addOnSuccessListener(location -> {
                         if (location != null) {
                             LatLng origin = new LatLng(location.getLatitude(), location.getLongitude());
-                            fetchRoute(origin, destination);
+                            fetchRoute(origin, destination, this::drawPolyline);
+
                         }
                     });
 
@@ -1485,210 +1515,395 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
-    //危険回避ルートが押された時に呼び出されるルート検索関数達
-    // --- helper: メートル単位で緯度経度をオフセットする ---
-    private LatLng offsetLatLng(LatLng origin, double eastMeters, double northMeters) {
-        // 地球半径 (m)
-        double R = 6378137;
-        double dLat = northMeters / R;
-        double dLon = eastMeters / (R * Math.cos(Math.toRadians(origin.latitude)));
-        double newLat = origin.latitude + Math.toDegrees(dLat);
-        double newLon = origin.longitude + Math.toDegrees(dLon);
-        return new LatLng(newLat, newLon);
-    }
-
-    // --- 追加 helper: danger の周囲に等間隔に候補点を作る ---
-    private List<LatLng> generateCircularCandidates(LatLng center, double radiusMeters, int count) {
-        List<LatLng> out = new ArrayList<>();
-        for (int i = 0; i < count; i++) {
-            double angle = 2 * Math.PI * i / count;
-            double dx = Math.cos(angle) * radiusMeters; // 東方向成分（m）
-            double dy = Math.sin(angle) * radiusMeters; // 北方向成分（m）
-            out.add(offsetLatLng(center, dx, dy));
+    // -------------------- ルート探索開始 --------------------
+    private void startRouteSearch(LatLng destination) {
+        for (DangerZone dz : dangerZones) {
+            Log.d("RouteDebug", "DangerZone: center=" + dz.center.latitude + "," + dz.center.longitude
+                    + " radius=" + dz.radius);
         }
-        return out;
-    }
 
-    // --- 新しい fetch: 候補点を作って順に試す ---
-
-
-    // --- まず直通ルートを試して、安全なら描画。ダメなら候補を順に試す ---
-    private void tryRouteDirectThenCandidates(LatLng origin, LatLng destination,
-                                              List<LatLng> waypointCandidates,
-                                              int maxTrials,
-                                              List<LatLng> dangerPins) {
-
-        // 【門番】すでに実行中なら、新しいリクエストを一切受け付けない
-        if (isProcessingRoute) {
-            Log.d(TAG, "計算中のため、新しいリクエストをスキップしました。");
+        if (current == null) {
+            Toast.makeText(this, "現在地を取得中です", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // 【1. 門を閉める】これから重い処理（通信）を始める合図
+        if (isProcessingRoute) {
+            Log.d("RouteDebug", "ルート探索中のためスキップ");
+            return;
+        }
         isProcessingRoute = true;
 
-        // 直通ルートを取得
-        new Thread(() -> {
-            try {
-                String urlDirect = "https://maps.googleapis.com/maps/api/directions/json?"
-                        + "origin=" + origin.latitude + "," + origin.longitude
-                        + "&destination=" + destination.latitude + "," + destination.longitude
-                        + "&mode=walking"
-                        + "&alternatives=false"
-                        + "&key=" + BuildConfig.MAPS_API_KEY;
+        Log.d("RouteDebug", "==== ルート探索開始 ====");
 
-                JSONObject jsonObj = requestJson(urlDirect);
-                if (jsonObj != null) {
-                    JSONArray routes = jsonObj.getJSONArray("routes");
-                    if (routes.length() > 0) {
-                        String encoded = routes.getJSONObject(0)
-                                .getJSONObject("overview_polyline").getString("points");
-                        List<LatLng> points = decodePolyline(encoded);
-                        if (!passesThroughDanger(points, dangerPins, 50)) {
-                            // 安全なら直ちに描画して終了
-                            runOnUiThread(() -> {
-                                Polyline poly = googleMap.addPolyline(new PolylineOptions()
-                                        .addAll(points)
-                                        .width(12)
-                                        .color(Color.MAGENTA)
-                                        .geodesic(true)
-                                );
-
-                                currentPolylines.add(poly);
-                                requestcount++;
-                                Log.d(TAG, requestcount + "回目のリクエスト試行で完了しました。");
-                                isProcessingRoute = false;
-                                requestcount = 0;
-
-                                Log.d(TAG, "ルート発見。門を開放します。");
-                            });
-
-                            return;
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                Log.e("RouteAvoid", "直通ルート確認で例外: ", e);
+        // まず直行ルートを試す
+        fetchRoute(current, destination, directRoute -> {
+            if (isRouteSafe(directRoute)) {
+                Log.d("RouteDebug", "✅ 直行ルート成功");
+                drawPolyline(directRoute);
+                isProcessingRoute = false;
+                return;
             }
 
-            // 直通がダメなら候補を順に試す
-            // 並列で投げるとAPI制限に引っかかるかもしれないから順次同期的に試す
-            int tried = 0;
-            for (LatLng wp : waypointCandidates) {
-                if (tried >= maxTrials) {
-                    isProcessingRoute = false;
-                    requestcount = 0;
+            Log.w("RouteDebug", "⚠ 直行ルート危険 → 回避ルートへ");
+            tryAvoidRoute(destination);
+        });
+    }
 
-                    Log.d(TAG, "上限値のため門を開放します。");
-                    break;
-                }
-                tried++;
-                requestcount++;
-                Log.d(TAG, requestcount + "回目のリクエスト試行中です。");
+    // -------------------- 危険ゾーン回避 --------------------
+    private void tryAvoidRoute(LatLng destination) {
+        if (dangerZones == null || dangerZones.isEmpty()) {
+            Log.w("RouteDebug", "⚠ 危険ゾーンなし → 避難所ルートへ");
+            tryShelterRoute();
+            return;
+        }
 
-                try {
-                    // via: を使うことで必ずその地点を経由させる（経路を強制的に迂回させられる）
-                    String waypointParam = "via:" + wp.latitude + "," + wp.longitude;
-                    String url = "https://maps.googleapis.com/maps/api/directions/json?"
-                            + "origin=" + origin.latitude + "," + origin.longitude
-                            + "&destination=" + destination.latitude + "," + destination.longitude
-                            + "&waypoints=" + URLEncoder.encode(waypointParam, "UTF-8")
-                            + "&mode=walking"
-                            + "&alternatives=false"
-                            + "&key=" + BuildConfig.MAPS_API_KEY;
+        tryAvoidRouteAdvanced(current, destination, () -> {
+            Log.w("RouteDebug", "⚠ 回避失敗 → 避難所ルートへ");
+            tryShelterRoute();
+        });
+    }
+    private void tryAvoidRouteAdvanced(LatLng start, LatLng end, Runnable onFailure) {
+        fetchRoute(start, end, route -> {
+            if (isRouteSafe(route)) {
+                drawPolyline(route);
+                isProcessingRoute = false;
+                Log.d("RouteDebug", "✅ 直行ルート安全（複数赤ピンチェック版）");
+                return;
+            }
 
-                    JSONObject jsonObj = requestJson(url);
-                    if (jsonObj == null) continue;
-
-                    JSONArray routes = jsonObj.getJSONArray("routes");
-                    if (routes.length() == 0) continue;
-
-                    String encoded = routes.getJSONObject(0)
-                            .getJSONObject("overview_polyline").getString("points");
-                    List<LatLng> points = decodePolyline(encoded);
-
-                    // 返ってきたルートが危険ピンと被らなければ採用して終了
-                    if (!passesThroughDanger(points, dangerPins, 50)) {
-                        runOnUiThread(() -> {
-                            Polyline poly = googleMap.addPolyline(new PolylineOptions()
-                                    .addAll(points)
-                                    .width(12)
-                                    .color(Color.MAGENTA)
-                                    .geodesic(true)
-                            );
-                            currentPolylines.add(poly);
-                            Log.d(TAG, requestcount + "回リクエストを試行しました。");
-                            requestcount = 0;
-
-                            isProcessingRoute = false;
-                            Log.d(TAG, "ルート発見門を開放します。");
-                        });
-
-                        return;
-
-
+            // 危険ゾーンに接触している場合、迂回ポイントを複数生成
+            List<DangerZone> hitZones = new ArrayList<>();
+            for (LatLng p : route) {
+                for (DangerZone dz : dangerZones) {
+                    if (distance(p, dz.center) < dz.radius && !hitZones.contains(dz)) {
+                        hitZones.add(dz);
                     }
-
-                } catch (Exception e) {
-                    Log.e("RouteAvoid", "候補試行で例外: ", e);
                 }
             }
 
-            /// 全部ダメだったら UI に失敗表示
-            // 最後にすべてダメだった場合
-            runOnUiThread(() -> {
-                // 12方位全部試してダメだった（ここに来た）ということは、この避難所は「到達不能」
-                Log.d(TAG, "次の避難所へ");
-                retryCount++;
-                Log.d(TAG, "避難所試行失敗。現在のretryCount: " + retryCount);
+            if (hitZones.isEmpty()) {
+                // 想定外：ルートは危険だけどヒットゾーンなし
+                onFailure.run();
+                return;
+            }
 
-                // 4か所の避難所をルート探索する避難所数に設定
-                if (retryCount >= 4) {
-                    Log.d("RouteAvoid", "API試行回数が上限(15回)に達しました。");
-                    Toast.makeText(this, "周辺の避難所に対して、安全なルートが見つかりません", Toast.LENGTH_LONG).show();
+            // 危険ゾーンごとに迂回ポイントを作る
+            List<LatLng> avoidPoints = new ArrayList<>();
+            for (DangerZone dz : hitZones) {
+                avoidPoints.addAll(generateAvoidPoints(dz, start, end));
+            }
+
+            // 生成した迂回ポイントを順に試す
+            // tryAvoidRouteAdvanced 内
+            tryAvoidSegments(start, end, avoidPoints, 0, 10, onFailure);
+
+        });
+    }
+
+    // 迂回ポイントを順に試す（再帰）
+    private void tryAvoidSegments(LatLng start, LatLng end, List<LatLng> points, int depth, int maxDepth, Runnable onFailure) {
+        if (depth >= maxDepth) {
+            Log.w("RouteDebug", "⚠ 最大再帰深度に達した → 回避失敗");
+            onFailure.run();
+            return;
+        }
+
+        if (points.isEmpty()) {
+            onFailure.run();
+            return;
+        }
+
+        LatLng next = points.get(0);
+
+        fetchRoute(start, next, r1 -> {
+            if (!isRouteSafe(r1)) {
+                // 次の迂回ポイント
+                tryAvoidSegments(start, end, points.subList(1, points.size()), depth + 1, maxDepth, onFailure);
+                return;
+            }
+
+            // 次は next → end のルート
+            fetchRoute(next, end, r2 -> {
+                if (isRouteSafe(r2)) {
+                    // 成功
+                    List<LatLng> merged = new ArrayList<>();
+                    merged.addAll(r1);
+                    merged.addAll(r2);
+                    drawPolyline(merged);
                     isProcessingRoute = false;
-                    requestcount = 0;
+                    Log.d("RouteDebug", "✅ 回避ルート成功");
+                } else {
+                    // 次の迂回ポイントを試す
+                    tryAvoidSegments(start, end, points.subList(1, points.size()), depth + 1, maxDepth, onFailure);
+                }
+            });
+        });
+    }
 
-                    Log.d(TAG, "避難所の上限値のため門を開放します。");
+    // 危険ゾーンの周囲に複数迂回ポイントを生成
+    private List<LatLng> generateAvoidPoints(DangerZone dz, LatLng start, LatLng end) {
+        List<LatLng> points = new ArrayList<>();
+        double offset = dz.radius / 111000.0; // m → 緯度換算
 
+        points.add(new LatLng(dz.center.latitude + offset, dz.center.longitude + offset));
+        points.add(new LatLng(dz.center.latitude + offset, dz.center.longitude - offset));
+        points.add(new LatLng(dz.center.latitude - offset, dz.center.longitude + offset));
+        points.add(new LatLng(dz.center.latitude - offset, dz.center.longitude - offset));
+
+        return points;
+    }
+
+    // 距離計算（赤ピンとの距離）
+    private float distance(LatLng a, LatLng b) {
+        float[] results = new float[1];
+        Location.distanceBetween(a.latitude, a.longitude, b.latitude, b.longitude, results);
+        return results[0];
+    }
+
+    // 再帰で危険ゾーンを1つずつ試す
+    private void tryAvoidZone(int index, LatLng destination) {
+        if (index >= dangerZones.size()) {
+            Log.w("RouteDebug", "❌ 全危険ゾーン回避失敗 → 避難所ルートへ");
+            tryShelterRoute();
+            return;
+        }
+
+        DangerZone dz = dangerZones.get(index);
+        LatLng avoidPoint = createAvoidPoint(dz);
+
+        Log.d("RouteDebug", "回避ゾーン試行: " + index);
+
+        fetchRoute(current, avoidPoint, r1 -> {
+            if (!isRouteSafe(r1)) {
+                Log.w("RouteDebug", "❌ 前半ルート危険 → 次ゾーン");
+                tryAvoidZone(index + 1, destination);
+                return;
+            }
+
+            fetchRoute(avoidPoint, destination, r2 -> {
+                if (!isRouteSafe(r2)) {
+                    Log.w("RouteDebug", "❌ 後半ルート危険 → 次ゾーン");
+                    tryAvoidZone(index + 1, destination);
                     return;
                 }
 
+                List<LatLng> merged = new ArrayList<>();
+                merged.addAll(r1);
+                merged.addAll(r2);
 
-                // 1. 今の避難所（リストの先頭）を削除
-                if (shelterdelete != null && !(shelterdelete.size() <= 0)) {
-                    shelterdelete.remove(0);
-
-                    isProcessingRoute = false;
-
-                    Log.d(TAG, "次の避難所移行のため門を開放します。");
-                    // 2. まだリストに次の避難所があるなら、再トライ！
-                    // これにより、自動的に「2番目に近い避難所」に対して12方位アタックが始まる
-                    drawRouteAvoiding(shelterdelete);
-
-                } else {
-                    // 3. 全ての避難所リストを使い切ってもダメだった場合
-                    new AlertDialog.Builder(MainActivity.this)
-                            .setTitle("避難不可")
-                            .setMessage("全ての避難所へのルートが危険エリアにより遮断されています。周囲の安全を確保してください。")
-                            .setPositiveButton("OK", null)
-                            .show();
-
-                    // カウンターなどをリセット
-                    isProcessingRoute = false;
-                    requestcount = 0;
-
-                    Log.d(TAG, "探索失敗のため門を開放します。");
-
-                }
+                Log.d("RouteDebug", "✅ 回避ルート成功");
+                drawPolyline(merged);
+                isProcessingRoute = false; // 成功したら門番フラグリセット
             });
+        });
+    }
+
+    // -------------------- 避難所ルート --------------------
+    private void tryShelterRoute() {
+        if (shelterdelete == null || shelterdelete.isEmpty()) {
+            Log.e("RouteDebug", "❌ 避難所リストなし");
+            Toast.makeText(this, "避難所が見つかりません", Toast.LENGTH_SHORT).show();
+            isProcessingRoute = false;
+            return;
+        }
+
+        // 現在地との距離順にソート
+        Collections.sort(shelterdelete, (a, b) -> {
+            float[] resultsA = new float[1];
+            Location.distanceBetween(current.latitude, current.longitude, a.lat, a.lng, resultsA);
+            float[] resultsB = new float[1];
+            Location.distanceBetween(current.latitude, current.longitude, b.lat, b.lng, resultsB);
+            return Float.compare(resultsA[0], resultsB[0]);
+        });
+
+        // 最大3件だけ使用
+        shelterdelete = new ArrayList<>(shelterdelete.subList(0, Math.min(3, shelterdelete.size())));
+
+        tryNextShelter(); // 先頭避難所から順に処理
+    }
 
 
+    // 先頭の避難所を試す
+    // -------------------- 避難所ルート --------------------
+    // -------------------- 先頭の避難所を試す（安全チェック付き） --------------------
+    private void tryNextShelter() {
+        if (shelterdelete.isEmpty()) {
+            Toast.makeText(this, "安全な避難所ルートが見つかりません", Toast.LENGTH_LONG).show();
+            isProcessingRoute = false;
+            return;
+        }
+
+        // 先頭避難所を非同期前にリストから削除
+        Shelter nearest = shelterdelete.remove(0);
+        LatLng target = new LatLng(nearest.lat, nearest.lng);
+
+        Log.d("RouteDebug", "🚨 避難所ルート試行: " + nearest.name);
+
+        // まず直行ルートを取得
+        fetchRoute(current, target, directRoute -> {
+            if (isRouteSafe(directRoute)) {
+                // 安全なら直行で描画
+                Log.d("RouteDebug", "✅ 避難所直行ルート安全");
+                drawPolyline(directRoute);
+                isProcessingRoute = false;
+            } else {
+                Log.w("RouteDebug", "⚠ 避難所直行ルート危険 → 回避ルートへ");
+
+                // 危険ゾーンに接触しているゾーンだけを抽出
+                List<DangerZone> hitZones = new ArrayList<>();
+                for (LatLng p : directRoute) {
+                    for (DangerZone dz : dangerZones) {
+                        if (distance(p, dz.center) < dz.radius && !hitZones.contains(dz)) {
+                            hitZones.add(dz);
+                        }
+                    }
+                }
+
+                if (hitZones.isEmpty()) {
+                    // 想定外：危険判定されたがヒットゾーンなし → 次の避難所
+                    Log.w("RouteDebug", "⚠ ヒットゾーンなし → 次の避難所へ");
+                    tryNextShelter();
+                    return;
+                }
+
+                // 危険ゾーンごとに迂回ポイントを生成
+                List<LatLng> avoidPoints = new ArrayList<>();
+                for (DangerZone dz : hitZones) {
+                    avoidPoints.addAll(generateAvoidPoints(dz, current, target));
+                }
+
+                // 迂回ポイントを順に試す（再帰深度制限付き）
+                tryAvoidSegments(current, target, avoidPoints, 0, 10, () -> {
+                    Log.w("RouteDebug", "⚠ 避難所回避失敗 → 次の避難所へ");
+                    tryNextShelter(); // 次の避難所へ
+                });
+            }
+        });
+    }
+
+
+
+
+
+    // -------------------- 回避ルート（避難所向けも共通） --------------------
+    private void tryAvoidRoute(LatLng destination, Runnable onFailure) {
+        if (dangerZones == null || dangerZones.isEmpty()) {
+            Log.w("RouteDebug", "⚠ 危険ゾーンなし → 回避不可");
+            onFailure.run();
+            return;
+        }
+
+        tryAvoidZone(0, destination, onFailure);
+    }
+
+    private void tryAvoidZone(int index, LatLng destination, Runnable onFailure) {
+        if (index >= dangerZones.size()) {
+            Log.w("RouteDebug", "❌ 回避失敗");
+            onFailure.run();
+            return;
+        }
+
+        DangerZone dz = dangerZones.get(index);
+        LatLng avoidPoint = createAvoidPoint(dz);
+
+        fetchRoute(current, avoidPoint, r1 -> {
+            if (!isRouteSafe(r1)) {
+                // 前半ルート危険 → 次の回避ポイント
+                tryAvoidZone(index + 1, destination, onFailure);
+                return;
+            }
+
+            fetchRoute(avoidPoint, destination, r2 -> {
+                if (!isRouteSafe(r2)) {
+                    // 後半ルート危険 → 次の回避ポイント
+                    tryAvoidZone(index + 1, destination, onFailure);
+                    return;
+                }
+
+                // 回避成功
+                List<LatLng> merged = new ArrayList<>();
+                merged.addAll(r1);
+                merged.addAll(r2);
+                drawPolyline(merged);
+                isProcessingRoute = false;
+                Log.d("RouteDebug", "✅ 回避ルート成功");
+            });
+        });
+    }
+
+    // -------------------- ルート描画 --------------------
+    private void drawPolyline(List<LatLng> points) {
+        Polyline polyline = googleMap.addPolyline(
+                new PolylineOptions()
+                        .addAll(points)
+                        .width(12)
+                        .color(Color.MAGENTA)
+                        .geodesic(true)
+        );
+        currentPolylines.add(polyline);
+    }
+
+    // -------------------- ルート取得 --------------------
+    private void fetchRoute(LatLng origin, LatLng destination, java.util.function.Consumer<List<LatLng>> callback) {
+        String url = "https://maps.googleapis.com/maps/api/directions/json?"
+                + "origin=" + origin.latitude + "," + origin.longitude
+                + "&destination=" + destination.latitude + "," + destination.longitude
+                + "&mode=walking"
+                + "&alternatives=false"
+                + "&key=" + BuildConfig.MAPS_API_KEY;
+
+        new Thread(() -> {
+            try {
+                JSONObject json = requestJson(url);
+                if (json == null) return;
+
+                JSONArray routes = json.getJSONArray("routes");
+                if (routes.length() == 0) return;
+
+                String encoded = routes.getJSONObject(0)
+                        .getJSONObject("overview_polyline")
+                        .getString("points");
+
+                List<LatLng> points = decodePolyline(encoded);
+
+                runOnUiThread(() -> callback.accept(points));
+
+            } catch (Exception e) {
+                Log.e("RouteDebug", "fetchRoute error", e);
+            }
         }).start();
     }
 
-    // --- 単純な HTTP GET をして JSON を返すユーティリティ ---
-    private org.json.JSONObject requestJson(String urlStr) {
+    // -------------------- ルート安全判定 --------------------
+    private boolean isRouteSafe(List<LatLng> routePoints) {
+        float[] results = new float[1];
+
+        for (LatLng p : routePoints) {
+            for (DangerZone dz : dangerZones) {
+                Location.distanceBetween(
+                        p.latitude, p.longitude,
+                        dz.center.latitude, dz.center.longitude,
+                        results
+                );
+                if (results[0] < dz.radius) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    // -------------------- 回避ポイント作成 --------------------
+    private LatLng createAvoidPoint(DangerZone dz) {
+        double offset = dz.radius / 111000.0; // m → 緯度換算
+        return new LatLng(
+                dz.center.latitude + offset,
+                dz.center.longitude + offset
+        );
+    }
+
+    // -------------------- JSON取得 --------------------
+    private JSONObject requestJson(String urlStr) {
         try {
             java.net.URL reqUrl = new java.net.URL(urlStr);
             java.net.HttpURLConnection conn = (java.net.HttpURLConnection) reqUrl.openConnection();
@@ -1697,177 +1912,142 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = reader.readLine()) != null) sb.append(line);
-            return new org.json.JSONObject(sb.toString());
+            return new JSONObject(sb.toString());
         } catch (Exception e) {
-            Log.e("RouteAvoid", "requestJson失敗: ", e);
+            Log.e("RouteDebug", "requestJson失敗: ", e);
             return null;
         }
     }
 
-    private void drawRouteAvoiding(List<Shelter> shelterdelete) {
+    // -------------------- Polylineデコード --------------------
+    private List<LatLng> decodePolyline(String encoded) {
+        List<LatLng> poly = new ArrayList<>();
+        int index = 0, len = encoded.length();
+        int lat = 0, lng = 0;
+
+        while (index < len) {
+            int b, shift = 0, result = 0;
+            do {
+                b = encoded.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lat += dlat;
+
+            shift = 0; result = 0;
+            do {
+                b = encoded.charAt(index++) - 63;
+                result |= (b & 0x1f) << shift;
+                shift += 5;
+            } while (b >= 0x20);
+            int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+
+            poly.add(new LatLng(lat / 1E5, lng / 1E5));
+        }
+        return poly;
+    }
 
 
-        // 権限チェック
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED) {
-            // 権限がない場合はリクエストを出す
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    1);
+    /*private void drawRouteAvoiding(LatLng destination) {
+
+        Log.d("RouteDebug", "==== ルート探索開始 ====");
+
+        // ★ ここで必ずリセット
+        avoidAttemptCount = 0;
+        Log.d("RouteDebug", "dangerZones size=" + dangerZones.size());
+
+
+        if (current == null) {
+            Toast.makeText(this, "現在地を取得中です", Toast.LENGTH_SHORT).show();
             return;
         }
 
-
-        // 2. 今のリストから「一番近い1件」を特定
-        Shelter target = findNearestShelter2();
-        if (target == null) {
+        if (avoidAttemptCount >= MAX_AVOID_ATTEMPTS) {
+            Log.w("RouteDebug", "回避回数上限到達: " + avoidAttemptCount);
+            Toast.makeText(this, "安全なルートが見つかりませんでした", Toast.LENGTH_SHORT).show();
+            avoidAttemptCount = 0;
             return;
         }
 
+        avoidAttemptCount++;
 
-        //オブジェクトから座標を取得
-        LatLng destination = new LatLng(target.lat, target.lng);
-        // dangerPinsを同期的に作る
-        List<LatLng> dangerPins = new ArrayList<>();
-        for (Marker m : allMarkers) { // allMarkers には Firestore からロードされたピンも含まれているはずなのだ。
-            Object tag = m.getTag();
-            if (tag instanceof PinInfo) { // PinInfoを持っているピンのみをチェックなのだ
-                PinInfo info = (PinInfo) tag;
+        Log.d("RouteDebug", "回避試行回数: " + avoidAttemptCount);
+        clearAllPolylines();
 
-                // PinInfoのtypeを安全にLongとして取得するのだ
-                Object raw = info.getType();
-                Long type = null;
-                if (raw instanceof Number) {
-                    type = ((Number) raw).longValue(); // NumberであればlongValueで統一するのだ
-                }
+        fetchRoute(current, destination, directRoute -> {
 
-                // もし赤ピン（type == 1L）ならば、危険エリアに追加するのだ
-                if (type != null && type == 1L) { // 赤ピンのIDが1であるという前提なのだ
-                    dangerPins.add(m.getPosition());
-                    Log.d("RouteAvoid", "危険ピンを検出したのだ: " + m.getPosition());
-                }
+            // ★ 直行で安全なら終了
+            if (isRouteSafe(directRoute)) {
+                drawPolyline(directRoute);
+                avoidAttemptCount = 0; // ← 重要
+                return;
             }
-            // 注意: loadSheltersでセットされるShelterタグは危険ピンの対象外と仮定するのだ
-        }
 
-        // 現在地取得
-        fusedLocationClient.getLastLocation()
-                .addOnSuccessListener(location -> {
-                    if (location != null) {
-                        LatLng origin = new LatLng(location.getLatitude(), location.getLongitude());
+            Log.d("RouteDebug",
+                    "dangerZones size = " + dangerZones.size());
 
-                        List<LatLng> allCandidates = new ArrayList<>();
-                        double candidateRadius = 300;
-                        int candidateCount = 12;
+            Log.w("RouteDebug", "⚠ 直行ルートは危険 → 回避開始");
+            boolean routeFound = false;
 
-                        for (LatLng dangerCenter : dangerPins) {
-                            allCandidates.addAll(generateCircularCandidates(dangerCenter, candidateRadius, candidateCount));
-                        }
+            for (DangerZone dz : dangerZones) {
 
-                        //実際は12方位の中継箇所に試行して無理なら終わるので実質直線を含めた13回の試行回数になる
-                        tryRouteDirectThenCandidates(origin, destination, allCandidates, 15, dangerPins);
+
+                Log.d("RouteDebug", "回避対象ゾーン: " +
+                        dz.center.latitude + "," + dz.center.longitude +
+                        " radius=" + dz.radius);
+
+                LatLng avoidPoint = createAvoidPoint(dz);
+
+                fetchRoute(current, avoidPoint, r1 -> {
+                    Log.d("RouteDebug", "前半ルート取得: points=" + r1.size());
+
+                    if (!isRouteSafe(r1)) {
+                        Log.w("RouteDebug", "❌ 前半ルートが危険 → 次のゾーンへ");
+                        return;
                     }
+
+                    fetchRoute(avoidPoint, destination, r2 -> {
+                        if (!isRouteSafe(r2)) return;
+
+                        List<LatLng> merged = new ArrayList<>();
+                        merged.addAll(r1);
+                        merged.addAll(r2);
+
+                        Log.d("RouteDebug", "🎉 回避ルート完成: totalPoints=" + merged.size());
+
+                        drawPolyline(merged);
+                        avoidAttemptCount = 0; // ← 成功
+                    });
                 });
-    }
 
-    private boolean passesThroughDanger(List<LatLng> routePoints,
-                                        List<LatLng> dangerPins,
-                                        double radiusMeters) {
-
-        float[] results = new float[1];
-
-        for (LatLng p : routePoints) {
-            for (LatLng d : dangerPins) {
-                Location.distanceBetween(
-                        p.latitude, p.longitude,
-                        d.latitude, d.longitude,
-                        results
-                );
-                if (results[0] < radiusMeters) {
-                    return true; // 危険エリアを通過
-                }
+                routeFound = true;
+                break;
             }
-        }
-        return false;
-    }
 
-
-    //ルート計算関数(計算自体はGoogleAPIなのでHTTP通信するためのロジック)
-    private void fetchRoute(LatLng origin, LatLng destination) {
-
-//APIへのURL作成
-        String url = "https://maps.googleapis.com/maps/api/directions/json?"
-                + "origin=" + origin.latitude + "," + origin.longitude
-                + "&destination=" + destination.latitude + "," + destination.longitude
-                + "&mode=walking"
-                + "&alternatives=false"
-                + "&key=" + BuildConfig.MAPS_API_KEY; // ← local.properties のキーを参照
-
-
-//メインスレッド（今回はMAP画面)でのHTTP通信はルール上禁止→別スレッド（バックグラウンド）での処理にする）
-        new Thread(() -> {
-            try {
-                java.net.URL reqUrl = new java.net.URL(url);
-                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) reqUrl.openConnection();
-                conn.connect();
-                java.io.InputStreamReader isr = new java.io.InputStreamReader(conn.getInputStream());
-                java.io.BufferedReader reader = new java.io.BufferedReader(isr);
-
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) sb.append(line);
-
-                Log.d("RouteFetch", "JSON: " + sb.toString());
-
-                parseRouteJson(sb.toString());
-            } catch (Exception e) {
-                Log.e("RouteFetch", "ルート取得失敗: ", e);
+            // ★ 危険回避すらできなかった場合
+            if (!routeFound) {
+                Log.d("Route", "回避ルートなし");
+                avoidAttemptCount = 0;
             }
-        }).start();//←別スレッドの起動
+        });
+    }*/
 
 
-    }
-
-    // ④取得した道案内データを解析＆Polyline 描画関数
-    private void parseRouteJson(String json) {
-        try {
-
-            //返ってきたJSONデータ（string形でこのままでは使えない)を扱えるようオブジェクト化する
-            org.json.JSONObject jsonObject = new org.json.JSONObject(json);
-
-            //JSONデータからroutesを取り出す
-            org.json.JSONArray routes = jsonObject.getJSONArray("routes");
-            if (routes.length() == 0) return;
 
 
-            org.json.JSONObject route = routes.getJSONObject(0);
-            org.json.JSONObject polyline = route.getJSONObject("overview_polyline");
-            String encoded = polyline.getString("points");
-
-
-            List<LatLng> points = decodePolyline(encoded);
-
-
-            //UI操作はメインスレッドの特権（現在は別スレッドなのでメインに戻す)
-            runOnUiThread(() -> {
-
-                //実際のUI操作（経路の表示)
-                com.google.android.gms.maps.model.Polyline poly = googleMap.addPolyline(new com.google.android.gms.maps.model.PolylineOptions()
+    // ルートを Polyline として描画する共通関数
+    /*private void drawPolyline(List<LatLng> points) {
+        Polyline polyline = googleMap.addPolyline(
+                new PolylineOptions()
                         .addAll(points)
-                        .width(12)//←線の太さ
-                        .color(android.graphics.Color.BLUE) // 線の色
-                        .geodesic(true)//曲面に沿った自然な線にする
-                );
-                currentPolylines.add(poly);
-            });
-
-        } catch (Exception e) {
-            Log.e("RouteParse", "解析失敗: ", e);
-        }
+                        .width(12)
+                        .color(Color.MAGENTA)
+                        .geodesic(true)
+        );
+        currentPolylines.add(polyline);
     }
-
 
     // Google Polyline をデコード（圧縮データの解凍)する関数
     private List<LatLng> decodePolyline(String encoded) {
@@ -1908,7 +2088,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         return poly;
-    }
+    }*/
 
 
     //ピンの削除関数
@@ -1916,11 +2096,45 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         db.collection("pins").document(docId)
                 .delete()
-                .addOnSuccessListener(aVoid -> Log.d(TAG, "ピン削除成功: " + docId))
-                .addOnFailureListener(e -> Log.w(TAG, "ピン削除失敗", e));
-        marker.remove();  // マップから削除
-        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "ピン削除成功: " + docId);
+
+                    marker.remove();
+                    bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+
+                    // dangerZones からも削除
+                    removeDangerZoneForMarker(marker);
+
+                    // ★ 危険ゾーン・ピンを再構築
+                    reloadPins();
+                })
+                .addOnFailureListener(e ->
+                        Log.w(TAG, "ピン削除失敗", e));
     }
+    // マーカーに対応する dangerZone を削除
+    private void removeDangerZoneForMarker(Marker marker) {
+        Iterator<DangerZone> it = dangerZones.iterator();
+        while (it.hasNext()) {
+            DangerZone dz = it.next();
+            if (dz.center.latitude == marker.getPosition().latitude &&
+                    dz.center.longitude == marker.getPosition().longitude) {
+                it.remove();
+                Log.d(TAG, "dangerZone 削除: " + dz.center.latitude + "," + dz.center.longitude);
+            }
+        }
+    }
+
+    private void reloadPins() {
+        for (Marker m : allMarkers) {
+            m.remove();
+        }
+        allMarkers.clear();
+        dangerZones.clear();
+
+        loadPinsFromFirestore(); // ← ここで赤ピンだけ dangerZones に入る
+    }
+
+
     //④ボトムシートの初期化処理
 
     //ボトムシートの開閉やスライド制御のインスタンス

@@ -57,13 +57,24 @@ public class SosActivity extends AppCompatActivity {
         backButton.setOnClickListener(v -> finish());
 
         Button HelpButton = findViewById(R.id.HelpButton);
-        HelpButton.setOnClickListener(v -> showConfirmDialog());
+        HelpButton.setOnClickListener(v -> {
+            startDial119();
+            sendLocationToPinsCollection(3); // そのまま共有
+        });
+
 
         Button EmergencyButton = findViewById(R.id.EmergencyButton);
-        EmergencyButton.setOnClickListener(v -> showConfirmDialogFor110());
+        EmergencyButton.setOnClickListener(v -> {
+            startDial110();
+            sendLocationToPinsCollection(3);
+        });
+
 
         Button DisasterButton = findViewById(R.id.DisasterButton);
-        DisasterButton.setOnClickListener(v -> showConfirmDialogFor171());
+        DisasterButton.setOnClickListener(v -> {
+            startDial171();
+            sendLocationToPinsCollection(3);
+        });
 
         Button btnHowToUse = findViewById(R.id.btnHowToUse);
 
@@ -76,7 +87,7 @@ public class SosActivity extends AppCompatActivity {
     }
 
     // 119 → 確認ダイアログ
-    private void showConfirmDialog() {
+    /*private void showConfirmDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("確認")
                 .setMessage("第三者に位置情報を共有しますか？")
@@ -89,12 +100,12 @@ public class SosActivity extends AppCompatActivity {
                     startDial119();
                 })
                 .show();
-    }
+    }*/
 
 
 
     // 110 → 確認ダイアログ
-    private void showConfirmDialogFor110() {
+   /* private void showConfirmDialogFor110() {
         new AlertDialog.Builder(this)
                 .setTitle("確認")
                 .setMessage("第三者に位置情報を共有しますか？")
@@ -127,7 +138,7 @@ public class SosActivity extends AppCompatActivity {
                     startDial171();
                 })
                 .show();
-    }
+    }*/
 
 
     private void showDialog() {
@@ -227,14 +238,6 @@ public class SosActivity extends AppCompatActivity {
         intent.setData(Uri.parse("tel:171"));
         startActivity(intent);
     }
-
-
-
-
-
-
-
-
 
     // 現在地取得 → pins コレクションに追加（typeで区別）
     private void sendLocationToPinsCollection(int type) {
