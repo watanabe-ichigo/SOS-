@@ -5,19 +5,29 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingHorizontal="16dp"
-    android:paddingVertical="10dp"
+    android:paddingVertical="16dp"
     android:background="#FFFFFF">
+
+    <ImageView
+        android:id="@+id/imageUserIcon"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/initial_icon_user_"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/tvUsername"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
         android:text="Username"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:textStyle="bold"
         android:textColor="#222222"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toEndOf="@id/imageUserIcon"
+        app:layout_constraintTop_toTopOf="@id/imageUserIcon"
         app:layout_constraintEnd_toEndOf="parent"
         android:ellipsize="end"
         android:singleLine="true"/>
@@ -26,38 +36,41 @@
         android:id="@+id/tvUserId"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
         android:text="userId123456789"
-        android:textColor="#666666"
-        android:textSize="15sp"
-        android:layout_marginTop="0dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvUsername"
-        app:layout_constraintEnd_toEndOf="parent" />
+        android:textColor="#4D4545"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/imageUserIcon"
+        app:layout_constraintTop_toBottomOf="@id/tvUsername" />
 
     <TextView
         android:id="@+id/tvCurrentBoard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="現在の避難場所: ○○避難所"
-        android:textColor="@color/material_dynamic_neutral50"
-        android:textSize="14sp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="6dp"
+        android:lineSpacingExtra="2dp"
+        android:text="現在の避難場所: ○○避難所（ここが長くなって改行されても大丈夫な設計にします）"
+        android:textColor="#4D4545"
+        android:textSize="13sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintStart_toEndOf="@id/imageUserIcon"
         app:layout_constraintTop_toBottomOf="@id/tvUserId" />
 
     <TextView
         android:id="@+id/tvAddedAt"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
         android:text="2026-01-10 14:00"
+        android:textColor="#4D4545"
         android:textSize="11sp"
-        android:textColor="#999999"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintBottom_toBottomOf="@id/btnDelete"
-        app:layout_constraintTop_toTopOf="@id/btnDelete"
-        app:layout_constraintVertical_bias="0.5"/>
+        app:layout_constraintTop_toBottomOf="@id/tvCurrentBoard"
+        app:layout_constraintVertical_bias="0" />
 
     <ImageButton
         android:id="@+id/btnDelete"
@@ -65,26 +78,22 @@
         android:layout_height="36dp"
         android:src="@android:drawable/ic_menu_delete"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="6dp"
+        android:padding="4dp"
         android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/tvCurrentBoard"
-        android:layout_marginTop="8dp"
-        android:contentDescription="削除" />
+        app:layout_constraintEnd_toEndOf="parent" />
 
     <ImageButton
         android:id="@+id/btnCopy"
         android:layout_width="36dp"
         android:layout_height="36dp"
-        android:layout_marginEnd="4dp"
+        android:layout_marginEnd="12dp"
         android:background="?attr/selectableItemBackgroundBorderless"
         android:src="@mipmap/cope_1"
-        android:padding="8dp"
+        android:padding="4dp"
         android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="@id/btnDelete"
         app:layout_constraintEnd_toStartOf="@id/btnDelete"
-        app:layout_constraintTop_toTopOf="@id/btnDelete"
-        android:contentDescription="コピー" />
+        app:layout_constraintTop_toTopOf="@id/btnDelete" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

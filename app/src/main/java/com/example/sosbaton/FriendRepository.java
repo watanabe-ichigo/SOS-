@@ -8,25 +8,18 @@ import java.util.HashMap;
 import java.util.function.Consumer;
 
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FieldValue;
-import com.google.firebase.firestore.SetOptions;
 // Firebase関連（Task, getResult()）
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
 
 // FirestoreやRealtime Databaseの結果取得に使う場合
-import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
 
 // Taskの結果ステータスなどを扱う場合（Statusが何かによる）
 //import com.google.android.gms.common.api.Status;
 
 // Optional: 非同期処理で使うことがある
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.TaskCompletionSource;
 
-import com.google.firebase.auth.FirebaseAuth;
 
 public class FriendRepository {
     //フレンドリストのFirestoreとの通信を担うクラス
@@ -167,8 +160,12 @@ public class FriendRepository {
                                     if (userProfile.exists()) {
                                         FriendModel friend = new FriendModel();
                                         friend.setUserId(friendId);
-                                        friend.setUserName(userProfile.getString("username"));
-                                        String shelterId = userProfile.getString("currentBoardId");
+                                        friend.setUsername(userProfile.getString("username"));
+                                        // ★ ここに isSos の読み取りを追加！
+                                        Boolean isSos = userProfile.getBoolean("isSos");
+                                        friend.setIsSos(isSos != null && isSos); // nullチェックしつつセット
+                                        String iconUrl = userProfile.getString("iconUrl");
+                                        friend.setIconUrl(iconUrl != null ? iconUrl : "");                                        String shelterId = userProfile.getString("currentBoardId");
                                         com.google.firebase.Timestamp ts = userProfile.getTimestamp("evacuationTime");
                                         if (ts != null) {
                                             long diffSeconds = com.google.firebase.Timestamp.now().getSeconds() - ts.getSeconds();

@@ -17,13 +17,15 @@ public class FriendModel {
 
     //避難時間
     private String evacuatedAt;
+    //sos状態のフラグ
+    private boolean isSos;
+
+
 
     // Firestoreのために空のコンストラクタが必要
     public FriendModel() {}
 
-    public String getIconUrl() {
-        return iconUrl;
-    }
+
 
     //userIdを渡していく
     public String getUserId() {
@@ -31,7 +33,7 @@ public class FriendModel {
     }
 
     //userNameを渡していく
-    public String getUserName() {
+    public String getUsername() {
         return username;
     }
 
@@ -45,13 +47,22 @@ public class FriendModel {
         return evacuatedAt;
     }
 
+    //isSosを渡していく
+    public boolean getIsSos() { return isSos; }
+
+    //Urlを渡していく
+    public String getIconUrl() {
+        return iconUrl;
+    }
+
+
 
     // 必要に応じてSetter（値をセットする用）も追加
     public void setUserId(String userId) {
         this.userId = userId;
     }
 
-    public void setUserName(String userName) {
+    public void setUsername(String userName) {
         this.username = userName;
     }
 
@@ -62,4 +73,8 @@ public class FriendModel {
     public void setEvacuatedAt(String evacuatedAt) {
         this.evacuatedAt = evacuatedAt;
     }
+
+    public void setIsSos(boolean isSos) { this.isSos = isSos; }
+
+    public void setIconUrl(String iconUrl) {this.iconUrl = iconUrl;}
 }

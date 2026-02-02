@@ -93,7 +93,12 @@ import android.app.NotificationChannel;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
 
+    // 自分のインスタンスを保持する変数
+    private static MainActivity instance;
 
+    public static MainActivity getInstance() {
+        return instance;
+    }
     private String userName = "ゲスト";
     private DrawerLayout drawerLayout;
     private Toolbar toolbar;
@@ -132,10 +137,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     //選択ピン保存用
     // 現在選択中の避難所ピン(docID)
     private String selectedshelterPinDocId = null;
+
     //現在選択中の避難所ピン(name)
     private String selectedshelterPinname = null;
     //現在選択中の避難所ピン(座標)
     LatLng selectedshelterPinlatlng = null;
+
+    //現在選択中のsosピン
+    private  String selectedSosPinDocId =null;
 
 
     private boolean listenerRegistered = false;
@@ -186,6 +195,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static final int MAX_AVOID_ATTEMPTS = 2;
     private int avoidAttemptCount = 0;
 
+    //最初のカメラ移動用(一回目で行かなければ二回目に)
+    private boolean firstMoveCamera = true;
+
     private LatLng lastLatLng = null;
     boolean cameraInitialized = false;
 
@@ -199,15 +211,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // チャンネル作成は権限不要なので、真っ先にやる
-        createNotificationChannel();
-
-        // その後、順番に権限を求めていく
-        startPermissionFlow();
-
-
         // レイアウトセット
         setContentView(R.layout.activity_main);
+
 
         // --- View取得 ---
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -223,6 +229,20 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         FirebaseApp.initializeApp(this);
         db = FirebaseFirestore.getInstance();
         auth = FirebaseAuth.getInstance();
+
+        // チャンネル作成は権限不要なので、真っ先にやる
+        createNotificationChannel();
+
+        // その後、順番に権限を求めていく
+        startPermissionFlow();
+
+        //このクラスのメソッドをフレンドクラスで呼び出す用
+        instance = this;
+
+
+
+
+
 
 
         //避難ボタン
@@ -281,19 +301,11 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         drawRouteShortest(target);
 
 
-//                        // カメラ移動
-//                        LatLngBounds bounds = new LatLngBounds.Builder()
-//                                .include(current)
-//                                .include(selectedMarker.getPosition())
-//                                .build();
-//
-//                        googleMap.animateCamera(
-//                                CameraUpdateFactory.newLatLngBounds(bounds, 200)
-//                        );
 
                         googleMap.animateCamera(
                                 CameraUpdateFactory.newLatLngZoom(current, 18f)
                         );
+
                     })
                     .setNegativeButton("ルートリセット", (dialog, which) -> {
                         clearAllPolylines();
@@ -350,6 +362,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     // ① 完全新規なら削除処理を通さずそのまま保存
                                     if (query.isEmpty()) {
                                         sosaddPin(current, 3, q1, q2, q3, myuid);
+                                        setUserSosStatus(true);
                                         return;
                                     }
 
@@ -364,6 +377,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                                     batch.commit()
                                             .addOnSuccessListener(aVoid -> {
                                                 sosaddPin(current, 3, q1, q2, q3, myuid);
+                                                setUserSosStatus(true);
                                             })
                                             .addOnFailureListener(e -> {
                                                 Toast.makeText(this, "既存ピンの削除に失敗しました", Toast.LENGTH_SHORT).show();
@@ -384,7 +398,27 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         Button back = findViewById(R.id.btnback);
         Button btncurrent = findViewById(R.id.btncurrent);
         Button btnchat = findViewById(R.id.btnchat);
+        Button btnok = findViewById(R.id.btnok);
 
+        //解決ボタン
+        btnok.setOnClickListener(v -> {
+
+            new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                    .setTitle("sos解決")
+                    .setMessage("sosは解決しましたか？(ピン削除)")
+                    .setPositiveButton("解決", (dialog, which) -> {
+
+                        sos_deletePin(selectedMarker, selectedSosPinDocId);
+                        if (overlay != null) {
+                            overlay.remove();
+                        }
+                        setUserSosStatus(false);
+
+                    })
+                    .setNegativeButton("キャンセル", (dialog, which) -> dialog.dismiss())
+                    .show();
+
+        });
         //閉じる
         Close.setOnClickListener(v -> {
             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
@@ -392,99 +426,43 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         back.setOnClickListener(v -> {
             bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
         });
+
+
         //現在地に戻る
         btncurrent.setOnClickListener(v -> {
 
-            if (checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                if (current == null) {
-                    //現在地が許可出されているはずなのに現在地が取れていない場合
-                    // ユーザーに「取得中」であることを伝えつつ、強制的に最新値を取りに行く
-                    com.google.android.material.snackbar.Snackbar snackbar1 =
-                            com.google.android.material.snackbar.Snackbar.make(v, "現在地を再取得しています...", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT);
+            // 1. まずは権限があるか最終確認（念のため）
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+                return;
+            }
 
-                    // 2. Viewを取得
-                    View snackbar1View = snackbar1.getView();
+            // 2. 現在地（current）がすでに Callback によって取得されているか判定
+            if (current != null) {
+                // 現在地へカメラを移動
+                googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(current, 15f));
 
-                    // 3. レイアウトパラメータを FrameLayout.LayoutParams として取得し、位置を上に設定
-                    // ※Snackbarの内部構造を利用したハック的な方法です
-                    android.view.ViewGroup.LayoutParams lp1 = snackbar1View.getLayoutParams();
-                    if (lp1 instanceof android.widget.FrameLayout.LayoutParams) {
-                        android.widget.FrameLayout.LayoutParams params1 = (android.widget.FrameLayout.LayoutParams) lp1;
-                        params1.gravity = android.view.Gravity.TOP; // ここで上部を指定
-                        params1.topMargin = 150;                   // 上からのマージン
-                        snackbar1View.setLayoutParams(params1);
-                    }
+                //ボトムシートが展開中であれば隠す
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
 
-                    snackbar1.show();
-                    fusedLocationClient.getLastLocation().addOnSuccessListener(this, location -> {
-                        if (location != null) {
-
-
-                            current = new LatLng(location.getLatitude(), location.getLongitude());
-                            setCurrentLocationMarker();
-                            // ユーザーに「取得中」であることを伝えつつ、強制的に最新値を取りに行く
-                            com.google.android.material.snackbar.Snackbar snackbar2 =
-                                    com.google.android.material.snackbar.Snackbar.make(v, "現在地を再取得しています...", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT);
-
-                            // 2. Viewを取得
-                            View snackbar2View = snackbar2.getView();
-
-                            // 3. レイアウトパラメータを FrameLayout.LayoutParams として取得し、位置を上に設定
-                            // ※Snackbarの内部構造を利用したハック的な方法です
-                            android.view.ViewGroup.LayoutParams lp2 = snackbar2View.getLayoutParams();
-                            if (lp2 instanceof android.widget.FrameLayout.LayoutParams) {
-                                android.widget.FrameLayout.LayoutParams params2 = (android.widget.FrameLayout.LayoutParams) lp2;
-                                params2.gravity = android.view.Gravity.TOP; // ここで上部を指定
-                                params2.topMargin = 150;                   // 上からのマージン
-                                snackbar2View.setLayoutParams(params2);
-                            }
-
-                            snackbar2.show();
-                            //取得が完了すれば反映させる
-                            bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
-                            googleMap.animateCamera(
-                                    CameraUpdateFactory.newLatLngZoom(current, 15)
-                            );
-                            // 修正後：マーカーが存在するか確認してから実行する
-                            if (myMarker != null) {
-                                myMarker.showInfoWindow();
-                            } else {
-                                Log.d("DEBUG", "マーカーがまだ生成されていないため、表示をスキップしました");
-                            }
-                        } else {
-                            // 低スペック端末でよくある「まだGPSが準備中」のケース
-                            com.google.android.material.snackbar.Snackbar snackbar3 =
-                                    com.google.android.material.snackbar.Snackbar.make(v, "現在地が特定できません。GPS信号を確認してください...", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT);
-
-                            // 2. Viewを取得
-                            View snackbar3View = snackbar3.getView();
-
-                            // 3. レイアウトパラメータを FrameLayout.LayoutParams として取得し、位置を上に設定
-                            // ※Snackbarの内部構造を利用したハック的な方法です
-                            android.view.ViewGroup.LayoutParams lp3 = snackbar3View.getLayoutParams();
-                            if (lp3 instanceof android.widget.FrameLayout.LayoutParams) {
-                                android.widget.FrameLayout.LayoutParams params3 = (android.widget.FrameLayout.LayoutParams) lp3;
-                                params3.gravity = android.view.Gravity.TOP; // ここで上部を指定
-                                params3.topMargin = 150;                   // 上からのマージン
-                                snackbar3View.setLayoutParams(params3);
-                            }
-
-                            snackbar3.show();
-                        }
-                    });
-                } else {
-                    //現在地がすでに取得できている場合
-                    bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
-                    googleMap.animateCamera(
-                            CameraUpdateFactory.newLatLngZoom(current, 15)
-                    );
-                    // 修正後：マーカーが存在するか確認してから実行する
-                    if (myMarker != null) {
-                        myMarker.showInfoWindow();
-                    } else {
-                        Log.d("DEBUG", "マーカーがまだ生成されていないため、表示をスキップしました");
-                    }
+                // 現在地吹き出し表示
+                if (myMarker != null) {
+                    myMarker.showInfoWindow();
                 }
+
+                Log.d(TAG, "既存の現在地へ移動しました");
+
+            } else {
+
+                //ボトムシートが展開中であれば隠す
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+
+                showCustomSnackbar(v, "現在地を再取得しています。しばらくお待ちください");
+
+                // 作成した「再接続メソッド」を呼び出す
+                relinkLocation();
+
+                Log.d(TAG, "現在地が取れていないため、再取得を開始しました");
             }
 
         });
@@ -1019,19 +997,95 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         googleMap.setMyLocationEnabled(true);
 
+        //現在地の監視＆コールバック処理設置
+        LocationRequest request = LocationRequest.create();
+        request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        request.setInterval(3000);
+        fusedLocationClient.requestLocationUpdates(request, locationCallback, getMainLooper());
+
 
         fusedLocationClient.getLastLocation()
                 .addOnSuccessListener(this, location -> {
                     if (location != null) {
-                        LocationRequest request = LocationRequest.create();
-                        request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-                        request.setInterval(1000);
-                        fusedLocationClient.requestLocationUpdates(request, locationCallback, getMainLooper());
+
                         current = new LatLng(location.getLatitude(), location.getLongitude());
-                        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current, 15));
+
+                        if(firstMoveCamera){
+
+                            googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(current, 15));
+                            firstMoveCamera=false;
+                        }
+
+                        if (myMarker == null) {
+                            myMarker = googleMap.addMarker(
+                                    new MarkerOptions()
+                                            .position(current)
+                                            .title("現在地")
+                                            .icon(bitmapDescriptorFromVector(MainActivity.this, R.drawable.person))
+                                            .anchor(0.5f, 1.0f)
+                                            .flat(true)
+                            );
+                        } else {
+                            myMarker.setPosition(current);
+                        }
+
+                        // Firestore再取得判定（中心から200m以上移動したら再取得）
+                        boolean needReload = false;
+                        if (lastCacheCenter == null) {
+                            needReload = true; // 初回は必ず取得
+                        } else {
+                            float distance = distanceMeters(lastCacheCenter, current); // m単位
+                            if (distance >= CACHE_REFRESH_THRESHOLD) {
+                                needReload = true;
+                            }
+                        }
+
+                        if (needReload) {
+                            loadSheltersCacheFromDB();
+
+                            // 前回取得中心を更新
+                            lastCacheCenter = current;
+                        }
+
+
                         Log.d(TAG, "現在地取得成功: " + location.getLatitude() + ", " + location.getLongitude());
                     } else {
                         Log.d(TAG, "現在地が取得できませんでした");
+                    }
+                });
+
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            // もしすでに第一陣で位置が取れていたら出す必要はないので判定を入れる
+
+                showCustomSnackbar(findViewById(android.R.id.content),
+                        "現在地を確認中です。\n動かない場合は現在地ボタンをタップ");
+
+        }, 500);
+    }
+
+    // 現在地再取得用
+    private void relinkLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+
+        // 1. 古い監視（Callback）を一度解除して、重複を防ぐ
+        fusedLocationClient.removeLocationUpdates(locationCallback);
+
+        // 2. 最新の設定で監視を再開
+        LocationRequest request = LocationRequest.create();
+        request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        request.setInterval(3000); // 再取得時は少し短めの間隔で様子見
+
+        fusedLocationClient.requestLocationUpdates(request, locationCallback, getMainLooper());
+
+        // 3. 「今すぐ」の位置を1回限定で強制取得 (getLastLocationより強力)
+        fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null)
+                .addOnSuccessListener(location -> {
+                    if (location != null) {
+                        current = new LatLng(location.getLatitude(), location.getLongitude());
+                        // 取得できたらカメラを移動
+                        googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(current, 15));
                     }
                 });
     }
@@ -1039,12 +1093,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap map) {
         googleMap = map; // ★ ここで一度設定すれば十分なのだ
+
+
         loadSospin();//sosピンをロード
 
-        /*if (!listenerRegistered) {
-            startPinsListener();
-            listenerRegistered = true;
-        }*/
+        // --- 現在地 ---
+        setCurrentLocationMarker();
+
+
+
 
         // --- タップでメニュー表示 ---
         googleMap.setOnMapClickListener(latLng -> {
@@ -1077,8 +1134,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .show();
         });
 
-        // --- 現在地 ---
-        setCurrentLocationMarker();
+
 
         // 以前あったevacuationPoints/evacuationNamesの同期的なマーカー作成ループは、
         // loadShelters()と重複・競合するため削除したのだ。
@@ -1105,8 +1161,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtName.setText("場所:　" + s.name);
                 txtAddress.setText("住所:　" + s.address);
                 txtType.setText(s.type);
-                //カメラズーム
-                //googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(position,15));
                 //ボトムシート展開
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 //表示要素
@@ -1115,7 +1169,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtType.setVisibility(View.VISIBLE);
                 //非表示要素
                 Button btndelete = findViewById(R.id.btndelete);
+                Button btnok = findViewById(R.id.btnok);
                 btndelete.setVisibility(View.GONE);
+                btnok.setVisibility(View.GONE);
                 txttime.setVisibility(View.GONE);
                 txturgency.setVisibility(View.GONE);
                 txtsosCategory.setVisibility(View.GONE);
@@ -1144,6 +1200,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 txtType.setVisibility(View.VISIBLE);
                 //非表示要素
                 Button btnchat = findViewById(R.id.btnchat);
+                Button btnok = findViewById(R.id.btnok);
+                btnok.setVisibility(View.GONE);
                 btnchat.setVisibility(View.GONE);
                 txttime.setVisibility(View.GONE);
                 txturgency.setVisibility(View.GONE);
@@ -1152,6 +1210,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             } else if (tag instanceof Sospin) {//sosピン
                 Sospin sos = (Sospin) tag;
+                selectedSosPinDocId = sos.docId;
                 //テキスト変更箇所
                 updateTimeAgo(sos.createdAt, txttime);
                 txtName.setText("投稿者:　" + sos.Uname);
@@ -1179,6 +1238,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 //ボトムシート展開
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
                 //表示要素
+                Button btnok = findViewById(R.id.btnok);
+                if(myuid != null && myuid.equals(sos.uid)){
+                    btnok.setVisibility(View.VISIBLE);
+                }else{
+                    btnok.setVisibility(View.GONE);
+                }
                 txturgency.setVisibility(View.VISIBLE);
                 txtsosCategory.setVisibility(View.VISIBLE);
                 txtsupporttype.setVisibility(View.VISIBLE);
@@ -1417,6 +1482,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 });
     }
 
+    //    @Override
+//    public void onRequestPermissionsResult ( int requestCode, String[] permissions,
+//                                             int[] grantResults){
+//        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+//        if (requestCode == 1) {
+//            if (grantResults.length > 0
+//                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+//                setCurrentLocationMarker();
+//                startLocationUpdates();
+//                Log.d(TAG, "位置情報権限が許可されました");
+//            } else {
+//                Log.d(TAG, "位置情報権限が拒否されました");
+//            }
+//        }
+//    }
 
     private com.google.android.gms.location.LocationCallback locationCallback =
             new com.google.android.gms.location.LocationCallback() {
@@ -1446,12 +1526,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                         myMarker.setPosition(current);
                     }
 
-                    /*// 初回だけカメラを現在地に移動
+                    //カメラ移動を現在地へ移動
                     if (firstMoveCamera) {
                         googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(current, 15));
                         firstMoveCamera = false;
-                    }*/
-// Firestore再取得判定（中心から200m以上移動したら再取得）
+                    }
+
+                    // Firestore再取得判定（中心から200m以上移動したら再取得）
                     boolean needReload = false;
                     if (lastCacheCenter == null) {
                         needReload = true; // 初回は必ず取得
@@ -2135,6 +2216,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
 
+    //sosピン削除用
+    private void sos_deletePin(Marker marker, String docId) {
+
+        db.collection("sospin").document(docId)
+                .delete()
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "ピン削除成功: " + docId))
+                .addOnFailureListener(e -> Log.w(TAG, "ピン削除失敗", e));
+        marker.remove();  // マップから削除
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+    }
+
     //④ボトムシートの初期化処理
 
     //ボトムシートの開閉やスライド制御のインスタンス
@@ -2330,7 +2422,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     //ファイヤベースのsosピン情報を取得
     //避難所ピン情報をファイヤベースから取得
-    private void loadSospin() {
+    public void loadSospin() {
         db.collection("sospin").get().addOnSuccessListener(query -> {
             for (DocumentSnapshot doc : query) {
                 String docId = doc.getId();
@@ -2626,6 +2718,52 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         }
 
+    }
+
+    //スナックバー呼び出しメソッド
+    private void showCustomSnackbar(View view, String message) {
+        com.google.android.material.snackbar.Snackbar snackbar =
+                com.google.android.material.snackbar.Snackbar.make(view, message, com.google.android.material.snackbar.Snackbar.LENGTH_SHORT);
+
+        // スナックバーの本体ビューを取得
+        View snackbarView = snackbar.getView();
+
+        // レイアウト設定（LayoutParams）を取得
+        android.view.ViewGroup.LayoutParams lp = snackbarView.getLayoutParams();
+
+        if (lp instanceof android.widget.FrameLayout.LayoutParams) {
+            android.widget.FrameLayout.LayoutParams params = (android.widget.FrameLayout.LayoutParams) lp;
+
+            // 📍 表示位置を「上」に設定
+            params.gravity = android.view.Gravity.TOP;
+
+            // 📍 ステータスバーやツールバーと被らないよう、少し余白を作る
+            params.topMargin = 150; // 数値はアプリのデザインに合わせて調整してください
+
+            snackbarView.setLayoutParams(params);
+        }
+        // CoordinatorLayoutを使っている場合
+        else if (lp instanceof androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams) {
+            androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams params =
+                    (androidx.coordinatorlayout.widget.CoordinatorLayout.LayoutParams) lp;
+
+            params.gravity = android.view.Gravity.TOP;
+            params.topMargin = 150;
+            snackbarView.setLayoutParams(params);
+        }
+
+        snackbar.show();
+    }
+
+    //sosピンのブールレンセット関数
+    private void setUserSosStatus(boolean isSos) {
+        if (myuid == null) return;
+
+        db.collection("users")
+                .document(myuid)
+                .update("isSos", isSos)
+                .addOnSuccessListener(aVoid -> Log.d("SOS_STATUS", "ユーザーのSOS状態を " + isSos + " に更新しました"))
+                .addOnFailureListener(e -> Log.e("SOS_STATUS", "更新失敗", e));
     }
 
 }

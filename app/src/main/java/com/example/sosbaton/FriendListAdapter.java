@@ -1,5 +1,6 @@
 package com.example.sosbaton;
 
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,6 +10,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
 import java.util.List;
+import com.bumptech.glide.Glide;
+import android.widget.ImageView;
 
 public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.FriendViewHolder> {
 
@@ -40,12 +43,35 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
         if (friend == null) return;
 
         // --- ユーザー名のセット（nullなら「不明なユーザー」） ---
-        String name = (friend.getUserName() != null) ? friend.getUserName() : "不明なユーザー";
+        String name = (friend.getUsername() != null) ? friend.getUsername() : "不明なユーザー";
         holder.tvUsername.setText(name);
 
         // --- IDのセット（nullなら「---」） ---
         String id = (friend.getUserId() != null) ? friend.getUserId() : "---";
         holder.tvUserId.setText("ID: " + id);
+
+        // 3. 【ここが判定！】SOSかどうかで見た目を変える
+        if (friend.getIsSos()) {
+            // SOSがtrueなら、目立つ色に！
+            holder.itemView.setBackgroundColor(Color.parseColor("#f66b6b")); // 黄色
+        } else {
+            // falseなら、通常の色（透明）に！
+            holder.itemView.setBackgroundColor(Color.TRANSPARENT);
+        }
+
+        String iconUrl = friend.getIconUrl();
+        if (iconUrl != null && !iconUrl.isEmpty()) {
+            // アイコンが登録されている場合
+            Glide.with(holder.itemView.getContext())
+                    .load(iconUrl)
+                    .circleCrop() // ProfileActivityに合わせて丸く切り抜くのだ
+                    .placeholder(R.drawable.initial_icon_user_) // 読み込み中の仮画像
+                    .error(R.drawable.initial_icon_user_)       // エラー時の画像
+                    .into(holder.imageUserIcon);
+        } else {
+            // アイコン未登録の場合はデフォルト画像を表示するのだ
+            holder.imageUserIcon.setImageResource(R.drawable.initial_icon_user_);
+        }
 
         // --- 未実装情報のガード（データがない場合は非表示にする） ---
         // ※FriendModelにメソッドがない場合は、とりあえず仮でチェック
@@ -123,6 +149,7 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
     static class FriendViewHolder extends RecyclerView.ViewHolder {
         TextView tvUsername, tvUserId, tvCurrentBoard, tvAddedAt;
         ImageButton btnDelete, btnEye, btnCopy;
+        ImageView imageUserIcon;
 
 
         public FriendViewHolder(@NonNull View itemView) {
@@ -133,6 +160,7 @@ public class FriendListAdapter extends RecyclerView.Adapter<FriendListAdapter.Fr
             tvAddedAt = itemView.findViewById(R.id.tvAddedAt);
             btnDelete = itemView.findViewById(R.id.btnDelete);
             btnCopy = itemView.findViewById(R.id.btnCopy);
+            imageUserIcon = itemView.findViewById(R.id.imageUserIcon);
         }
     }
 }

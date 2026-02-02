@@ -25,6 +25,7 @@ public class friendActivity extends AppCompatActivity {
 
     private FriendListAdapter adapter; // ★追加：アダプターの宣言
 
+
     protected void onCreate(Bundle savedInstanceState) {
         //layout読み込み
         super.onCreate(savedInstanceState);
@@ -66,12 +67,16 @@ public class friendActivity extends AppCompatActivity {
         FriendViewModel friendViewModel = new ViewModelProvider(this).get(FriendViewModel.class);
         //
 
+        if (MainActivity.getInstance() != null) {
+            MainActivity.getInstance().loadSospin();
+        }
 
 
 
         //閉じる
         ImageButton close =findViewById(R.id.btnClose);
         close.setOnClickListener(v -> {
+
             finish();
         });
 
@@ -90,7 +95,7 @@ public class friendActivity extends AppCompatActivity {
         // 4. 新規追加時のトースト通知（★追加）
         friendViewModel.newFriendAddedEvent.observe(this, friend -> {
             if (friend != null) {
-                Toast.makeText(this, friend.getUserName() + "さんとフレンドになりました！", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, friend.getUsername() + "さんとフレンドになりました！", Toast.LENGTH_SHORT).show();
                 friendViewModel.consumeNewFriendEvent(); // 通知済みとしてリセット
             }
         });
@@ -143,7 +148,7 @@ public class friendActivity extends AppCompatActivity {
 
                     // 取得した情報をテキストボックスにセット
                     if (tx_name != null) {
-                        tx_name.setText("名前：" + foundUser.getUserName());
+                        tx_name.setText("名前：" + foundUser.getUsername());
                     }
 
                     if (tx_id != null) {

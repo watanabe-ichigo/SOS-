@@ -7,18 +7,50 @@
     android:padding="12dp"
     android:background="#FFFFFF">
 
-    <!-- 承認ボタン -->
-    <ImageButton
-        android:id="@+id/btnApprove"
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:src="@android:drawable/ic_input_add"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:contentDescription="承認"
-        app:layout_constraintEnd_toStartOf="@id/btnDelete"
-        app:layout_constraintTop_toTopOf="parent"/>
+    <ImageView
+        android:id="@+id/imageUserIcon"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:scaleType="centerCrop"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:srcCompat="@drawable/initial_icon_user_" />
 
-    <!-- 削除ボタン -->
+    <TextView
+        android:id="@+id/tvFriendName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:text="Username"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        app:layout_constraintStart_toEndOf="@id/imageUserIcon"
+        app:layout_constraintTop_toTopOf="@id/imageUserIcon"
+        app:layout_constraintEnd_toStartOf="@id/btnApprove"
+        app:layout_constraintVertical_chainStyle="packed"
+        app:layout_constraintBottom_toTopOf="@id/tvFriendUserId"
+        android:ellipsize="end"
+        android:singleLine="true"/>
+
+    <TextView
+        android:id="@+id/tvFriendUserId"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="8dp"
+        android:text="userId12345"
+        android:textSize="14sp"
+        android:textColor="#666666"
+        app:layout_constraintStart_toEndOf="@id/imageUserIcon"
+        app:layout_constraintTop_toBottomOf="@id/tvFriendName"
+        app:layout_constraintEnd_toStartOf="@id/btnApprove"
+        app:layout_constraintBottom_toBottomOf="@id/imageUserIcon"
+        android:ellipsize="end"
+        android:singleLine="true"/>
+
     <ImageButton
         android:id="@+id/btnDelete"
         android:layout_width="36dp"
@@ -27,34 +59,19 @@
         android:background="?attr/selectableItemBackgroundBorderless"
         android:contentDescription="削除"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"/>
-
-    <!-- ユーザー名 -->
-    <TextView
-        android:id="@+id/tvFriendName"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="Username"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="#333333"
-        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/btnApprove"
-        android:ellipsize="end"
-        android:singleLine="true"/>
+        app:layout_constraintBottom_toBottomOf="parent"/>
 
-    <!-- ユーザーID -->
-    <TextView
-        android:id="@+id/tvFriendUserId"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text="userId12345"
-        android:textSize="14sp"
-        android:textColor="#666666"
-        app:layout_constraintStart_toStartOf="@id/tvFriendName"
-        app:layout_constraintTop_toBottomOf="@id/tvFriendName"
-        app:layout_constraintEnd_toStartOf="@id/btnApprove"
-        android:ellipsize="end"
-        android:singleLine="true"/>
+    <ImageButton
+        android:id="@+id/btnApprove"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginEnd="8dp"
+        android:src="@android:drawable/ic_input_add"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="承認"
+        app:layout_constraintEnd_toStartOf="@id/btnDelete"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
