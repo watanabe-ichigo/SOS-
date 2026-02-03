@@ -81,6 +81,9 @@ import com.google.firebase.firestore.DocumentSnapshot; // これも必要です
 import com.example.sosbaton.DangerZone;
 import java.util.Collections;
 
+import java.util.LinkedHashMap;
+
+
 
 
 
@@ -1642,6 +1645,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     // -------------------- ルート探索開始 --------------------
     private void startRouteSearch(LatLng destination) {
+        shelterQueue = null;
+
         for (DangerZone dz : dangerZones) {
             Log.d("RouteDebug", "DangerZone: center=" + dz.center.latitude + "," + dz.center.longitude
                     + " radius=" + dz.radius);
@@ -1822,7 +1827,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             });
         });
     }
-
+    private List<Shelter> shelterQueue;
     // -------------------- 避難所ルート --------------------
     private void tryShelterRoute() {
         if (shelterdelete == null || shelterdelete.isEmpty()) {
@@ -1832,34 +1837,56 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             return;
         }
 
-        // 現在地との距離順にソート
-        Collections.sort(shelterdelete, (a, b) -> {
-            float[] resultsA = new float[1];
-            Location.distanceBetween(current.latitude, current.longitude, a.lat, a.lng, resultsA);
-            float[] resultsB = new float[1];
-            Location.distanceBetween(current.latitude, current.longitude, b.lat, b.lng, resultsB);
-            return Float.compare(resultsA[0], resultsB[0]);
-        });
+        // 最初の1回だけ初期化
+        if (shelterQueue == null) {
 
-        // 最大3件だけ使用
-        shelterdelete = new ArrayList<>(shelterdelete.subList(0, Math.min(3, shelterdelete.size())));
+            // --- 重複除去 ---
+            Map<String, Shelter> unique = new LinkedHashMap<>();
+            for (Shelter s : shelterdelete) {
+                String key = s.name + "_" + s.lat + "_" + s.lng;
+                unique.put(key, s);
+            }
+            shelterQueue = new ArrayList<>(unique.values());
 
-        tryNextShelter(); // 先頭避難所から順に処理
+            // --- 距離順ソート ---
+            Collections.sort(shelterQueue, (a, b) -> {
+                float[] ra = new float[1];
+                float[] rb = new float[1];
+                Location.distanceBetween(current.latitude, current.longitude, a.lat, a.lng, ra);
+                Location.distanceBetween(current.latitude, current.longitude, b.lat, b.lng, rb);
+                return Float.compare(ra[0], rb[0]);
+            });
+
+            // --- 上位3件に制限 ---
+            shelterQueue = new ArrayList<>(
+                    shelterQueue.subList(0, Math.min(3, shelterQueue.size()))
+            );
+        }
+
+        Log.d("RouteDebug", "ShelterQueue size=" + shelterQueue.size());
+        for (Shelter s : shelterQueue) {
+            Log.d("RouteDebug", "QueueItem: " + s.name + " " + s.lat + "," + s.lng);
+        }
+
+        tryNextShelter();
     }
+
+
 
 
     // 先頭の避難所を試す
     // -------------------- 避難所ルート --------------------
     // -------------------- 先頭の避難所を試す（安全チェック付き） --------------------
     private void tryNextShelter() {
-        if (shelterdelete.isEmpty()) {
+        if (shelterQueue.isEmpty()) {
             Toast.makeText(this, "安全な避難所ルートが見つかりません", Toast.LENGTH_LONG).show();
             isProcessingRoute = false;
             return;
         }
 
         // 先頭避難所を非同期前にリストから削除
-        Shelter nearest = shelterdelete.remove(0);
+        Shelter nearest = shelterQueue.remove(0);
+
         LatLng target = new LatLng(nearest.lat, nearest.lng);
 
         Log.d("RouteDebug", "🚨 避難所ルート試行: " + nearest.name);
